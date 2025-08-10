@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Smartphone, User, Check } from 'lucide-react';
 import axios from 'axios';
 
+// Get API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const AddFriend = () => {
   const [mobile, setMobile] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +34,7 @@ const AddFriend = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/add-friend', { mobile });
+      const response = await axios.post(`${API_BASE_URL}/auth/add-friend`, { mobile });
       setFriendData(response.data.friend);
       setSuccess(true);
       

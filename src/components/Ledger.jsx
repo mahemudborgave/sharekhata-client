@@ -5,6 +5,9 @@ import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock } from 'lucide-rea
 import axios from 'axios';
 import io from 'socket.io-client';
 
+// Get API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const Ledger = () => {
   const [ledger, setLedger] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +35,7 @@ const Ledger = () => {
   }, [ledgerId]);
 
   const setupSocket = () => {
-    socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+    socketRef.current = io(API_BASE_URL);
     
     socketRef.current.emit('join-ledger', ledgerId);
     
@@ -48,7 +51,7 @@ const Ledger = () => {
   const fetchLedger = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/ledger/${ledgerId}`);
+      const response = await axios.get(`${API_BASE_URL}/ledger/${ledgerId}`);
       setLedger(response.data.ledger);
     } catch (error) {
       console.error('Error fetching ledger:', error);
@@ -87,7 +90,7 @@ const Ledger = () => {
 
     try {
       const endpoint = transactionType === 'added' ? 'add' : 'receive';
-      await axios.post(`/api/ledger/${ledgerId}/${endpoint}`, {
+      await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, {
         amount: parseFloat(amount),
         description: description.trim()
       });

@@ -4,6 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Plus, LogOut, User, ArrowRight, IndianRupee } from 'lucide-react';
 import axios from 'axios';
 
+// Get API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const Dashboard = () => {
   const [ledgers, setLedgers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +22,7 @@ const Dashboard = () => {
   const fetchLedgers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/ledger');
+      const response = await axios.get(`${API_BASE_URL}/ledger`);
       setLedgers(response.data.ledgers);
     } catch (error) {
       console.error('Error fetching ledgers:', error);

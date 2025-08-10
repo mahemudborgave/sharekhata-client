@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Get API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -28,7 +31,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await axios.get('/api/auth/profile');
+      const response = await axios.get(`${API_BASE_URL}/auth/profile`);
       setUser(response.data.user);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -41,7 +44,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (mobile, password) => {
     try {
-      const response = await axios.post('/api/auth/login', { mobile, password });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { mobile, password });
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
@@ -59,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, mobile, password) => {
     try {
-      const response = await axios.post('/api/auth/register', { name, mobile, password });
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, { name, mobile, password });
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);

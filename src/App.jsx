@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Header from './components/Header';
+// import Header from './components/Header';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
@@ -30,7 +30,6 @@ const ProtectedRoute = ({ children }) => {
   
   return (
     <>
-      <Header />
       {children}
     </>
   );

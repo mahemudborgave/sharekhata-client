@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, User, ArrowRight, IndianRupee } from 'lucide-react';
 import axios from 'axios';
+import Header from './Header';
 
 // Get API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -178,6 +179,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-blue-50">
+      <Header />
       {/* Header */}
       {/* <div className="bg-blue-400 shadow-sm">
         <div className="px-4 py-4">

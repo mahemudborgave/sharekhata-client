@@ -21,11 +21,22 @@ const Dashboard = () => {
 
   const fetchLedgers = async () => {
     try {
+      console.log('🔄 FETCHING LEDGERS - START');
+      console.log('📡 API URL:', `${API_BASE_URL}/ledger`);
+      console.log('👤 Current user:', user);
+      
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/ledger`);
+      
+      console.log('📦 LEDGERS RESPONSE:', response.data);
+      console.log('📊 LEDGERS COUNT:', response.data.ledgers.length);
+      console.log('📋 LEDGERS DATA:', response.data.ledgers);
+      
       setLedgers(response.data.ledgers);
+      console.log('✅ FETCHING LEDGERS - COMPLETE');
     } catch (error) {
-      console.error('Error fetching ledgers:', error);
+      console.error('❌ FETCHING LEDGERS - ERROR:', error);
+      console.error('❌ Error response:', error.response?.data);
       setError('Failed to load ledgers');
     } finally {
       setLoading(false);
@@ -39,8 +50,8 @@ const Dashboard = () => {
 
   const formatBalance = (balance) => {
     if (balance === 0) return 'All settled';
-    if (balance > 0) return `Friend owes you ₹${balance}`;
-    return `You owe friend ₹${Math.abs(balance)}`;
+    if (balance > 0) return `You get ₹${balance}`;
+    return `You need to give ₹${Math.abs(balance)}`;
   };
 
   const getBalanceColor = (balance) => {
@@ -79,21 +90,21 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-blue-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-md mx-auto px-4 py-4">
+      <div className="bg-blue-400 shadow-sm">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {getAvatar(user)}
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">Hello, {user.name}</h1>
-                <p className="text-sm text-gray-500">{user.mobile}</p>
+                <p className="text-sm text-white">{user.mobile}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-2 text-gray-900 hover:text-gray-600 transition-colors"
             >
               <LogOut className="h-5 w-5" />
             </button>
@@ -152,7 +163,7 @@ const Dashboard = () => {
                   <ArrowRight className="h-5 w-5 text-gray-400" />
                 </div>
                 
-                <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Balance</span>
                     <span className={`font-semibold ${getBalanceColor(ledger.balance)}`}>

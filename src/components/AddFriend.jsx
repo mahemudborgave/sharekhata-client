@@ -21,12 +21,17 @@ const AddFriend = () => {
     setSuccess(false);
     setFriendData(null);
 
+    console.log('🔄 ADDING FRIEND - START');
+    console.log('📱 Friend Mobile:', mobile);
+
     if (!mobile) {
+      console.log('❌ Missing mobile number');
       setError('Please enter a mobile number');
       return;
     }
 
     if (mobile.length !== 10 || !/^[6-9]\d{9}$/.test(mobile)) {
+      console.log('❌ Invalid mobile format:', mobile);
       setError('Please enter a valid 10-digit mobile number');
       return;
     }
@@ -34,15 +39,29 @@ const AddFriend = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/add-friend`, { mobile });
+      const requestData = { mobile };
+      console.log('📡 API URL:', `${API_BASE_URL}/auth/add-friend`);
+      console.log('📦 Request data:', requestData);
+      
+      const response = await axios.post(`${API_BASE_URL}/auth/add-friend`, requestData);
+      
+      console.log('✅ ADD FRIEND RESPONSE:', response.data);
+      console.log('👤 Friend data:', response.data.friend);
+      console.log('📋 Ledger ID:', response.data.ledgerId);
+      
       setFriendData(response.data.friend);
       setSuccess(true);
       
       // Auto-navigate after 2 seconds
       setTimeout(() => {
+        console.log('🔄 Auto-navigating to ledger:', response.data.ledgerId);
         navigate(`/ledger/${response.data.ledgerId}`);
       }, 2000);
+      
+      console.log('✅ ADDING FRIEND - COMPLETE');
     } catch (error) {
+      console.error('❌ ADDING FRIEND - ERROR:', error);
+      console.error('❌ Error response:', error.response?.data);
       setError(error.response?.data?.message || 'Failed to add friend');
     } finally {
       setLoading(false);
@@ -57,7 +76,7 @@ const AddFriend = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-md mx-auto px-4 py-4">
+        <div className="px-4 py-4">
           <div className="flex items-center space-x-3">
             <button
               onClick={handleBack}
@@ -71,7 +90,7 @@ const AddFriend = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="px-4 py-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">

@@ -6,6 +6,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 const AuthContext = createContext();
 
+export { AuthContext };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -44,15 +46,25 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (mobile, password) => {
     try {
+      console.log('🔐 LOGIN - START');
+      console.log('📱 Mobile:', mobile);
+      console.log('🔑 Password:', password ? '***' : 'empty');
+      console.log('📡 API URL:', `${API_BASE_URL}/auth/login`);
+      
       const response = await axios.post(`${API_BASE_URL}/auth/login`, { mobile, password });
       const { token, user } = response.data;
+      
+      console.log('✅ LOGIN RESPONSE:', { token: token ? '***' : 'empty', user });
       
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       
+      console.log('✅ LOGIN - COMPLETE');
       return { success: true };
     } catch (error) {
+      console.error('❌ LOGIN - ERROR:', error);
+      console.error('❌ Error response:', error.response?.data);
       return { 
         success: false, 
         message: error.response?.data?.message || 'Login failed' 

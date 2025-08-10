@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
+import jsPDF from 'jspdf';
 
 // Get API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -162,8 +163,8 @@ const Ledger = () => {
   const formatBalance = (balance) => {
     console.log('Formatting balance:', balance);
     if (balance === 0) return 'All settled';
-    if (balance > 0) return `You get ₹${balance}`;
-    return `You need to give ₹${Math.abs(balance)}`;
+    if (balance > 0) return `You will get Rs ${balance}`;
+    return `You need to give Rs ${Math.abs(balance)}`;
   };
 
   const getBalanceColor = (balance) => {
@@ -176,8 +177,6 @@ const Ledger = () => {
   const calculateFrontendBalance = (transactions) => {
     let userPaid = 0;
     let userReceived = 0;
-    let friendPaid = 0;
-    let friendReceived = 0;
 
     console.log('=== BALANCE CALCULATION START ===');
     console.log('Total transactions:', transactions.length);
@@ -217,37 +216,21 @@ const Ledger = () => {
         // You received money from someone
         userReceived += transaction.amount;
         console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
-      } else {
-        // This transaction doesn't involve you directly
-        // It's between other people in the ledger
-        if (transaction.type === 'added') {
-          friendPaid += transaction.amount;
-          console.log(`👥 Friend paid: +${transaction.amount}, Total friend paid: ${friendPaid}`);
-        } else if (transaction.type === 'received') {
-          friendReceived += transaction.amount;
-          console.log(`👥 Friend received: +${transaction.amount}, Total friend received: ${friendReceived}`);
-        }
       }
     });
 
-    // Calculate net balance
-    const userNet = userPaid - userReceived; // How much you've contributed
-    const friendNet = friendPaid - friendReceived; // How much friend has contributed
-    const balance = userNet - friendNet; // Who owes whom
+    // Calculate balance: positive means you get money, negative means you owe money
+    const balance = userPaid - userReceived;
 
     console.log('=== CALCULATION SUMMARY ===');
-    console.log(`You paid: ₹${userPaid}`);
-    console.log(`You received: ₹${userReceived}`);
-    console.log(`Your net contribution: ₹${userNet}`);
-    console.log(`Friend paid: ₹${friendPaid}`);
-    console.log(`Friend received: ₹${friendReceived}`);
-    console.log(`Friend's net contribution: ₹${friendNet}`);
-    console.log(`Final balance: ₹${userNet} - ₹${friendNet} = ₹${balance}`);
+    console.log(`You paid: Rs ${userPaid}`);
+    console.log(`You received: Rs ${userReceived}`);
+    console.log(`Final balance: Rs ${userPaid} - Rs ${userReceived} = Rs ${balance}`);
 
     if (balance > 0) {
-      console.log(`🎯 RESULT: You get ₹${balance} from friend`);
+      console.log(`🎯 RESULT: You get Rs ${balance} from friend`);
     } else if (balance < 0) {
-      console.log(`🎯 RESULT: You need to give ₹${Math.abs(balance)} to friend`);
+      console.log(`🎯 RESULT: You need to give Rs ${Math.abs(balance)} to friend`);
     } else {
       console.log(`🎯 RESULT: All settled!`);
     }
@@ -299,6 +282,159 @@ const Ledger = () => {
     });
   };
 
+  // Generate PDF export of transactions
+  const generatePDF = (transactions) => {
+    if (!transactions || transactions.length === 0) {
+      alert('No transactions to export');
+      return;
+    }
+
+    try {
+      // Create new jsPDF instance with proper configuration
+      const doc = new jsPDF('p', 'mm', 'a4');
+      
+      // Add header
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ShareKhata - Transaction Report', 105, 15, { align: 'center' });
+      
+      // Add ledger details - more compact spacing
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Friend: ${ledger.friend.name}`, 20, 25);
+      doc.text(`Mobile: ${ledger.friend.mobile}`, 20, 31);
+      doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN')}`, 20, 37);
+      
+      // Clean balance text without special characters - use direct text
+      const balance = calculateFrontendBalance(transactions);
+      let balanceText = '';
+      if (balance === 0) {
+        balanceText = 'All settled';
+      } else if (balance > 0) {
+        balanceText = `You will get Rs ${balance}`;
+      } else {
+        balanceText = `You need to give Rs ${Math.abs(balance)}`;
+      }
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Current Balance: ${balanceText}`, 20, 43);
+      
+      // Add summary section - more compact
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary', 20, 52);
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const youPaid = transactions
+        .filter(t => t.sentBy === user?.mobile)
+        .reduce((sum, t) => sum + t.amount, 0);
+      const youReceived = transactions
+        .filter(t => t.receivedBy === user?.mobile)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      // Clean amount text without special characters - use simple formatting
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`You Paid: Rs ${youPaid.toFixed(2)}`, 20, 59);
+      doc.text(`You Received: Rs ${youReceived.toFixed(2)}`, 20, 65);
+      doc.text(`Net Balance: Rs ${(youPaid - youReceived).toFixed(2)}`, 20, 71);
+      
+      // Add transactions section - more compact
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Transaction Details', 20, 80);
+      
+      // Manually create table structure - more compact
+      let yPosition = 88;
+      const lineHeight = 6; // Reduced from 8 to 6
+      const colWidths = [12, 35, 22, 32, 22, 18, 30];
+      const colPositions = [20, 32, 67, 89, 121, 143, 161];
+      
+      // Table header - more compact
+      doc.setFillColor(59, 130, 246);
+      doc.rect(20, yPosition - 4, 170, 6, 'F'); // Reduced height from 8 to 6
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      
+      const headers = ['#', 'Type', 'Amount', 'Description', 'Date', 'Time', 'Category'];
+      headers.forEach((header, index) => {
+        doc.text(header, colPositions[index], yPosition);
+      });
+      
+      yPosition += 10; // Reduced from 15 to 10
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      // Table rows - more compact
+      transactions.forEach((transaction, index) => {
+        // Check if we need a new page - adjusted threshold
+        if (yPosition > 280) {
+          doc.addPage();
+          yPosition = 15;
+        }
+        
+        const isCurrentUserSent = transaction.sentBy === user?.mobile;
+        const isCurrentUserReceived = transaction.receivedBy === user?.mobile;
+        const isCurrentUserInvolved = isCurrentUserSent || isCurrentUserReceived;
+        
+        const rowData = [
+          (index + 1).toString(),
+          isCurrentUserInvolved 
+            ? (isCurrentUserSent ? 'You Paid' : 'You Received')
+            : (transaction.addedBy?.name || 'Unknown'),
+          `Rs ${transaction.amount.toFixed(2)}`,
+          transaction.description || '-',
+          new Date(transaction.timestamp).toLocaleDateString('en-IN'),
+          new Date(transaction.timestamp).toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
+          isCurrentUserInvolved ? 'Your Transaction' : 'Friend\'s Transaction'
+        ];
+        
+        // Add row data
+        rowData.forEach((cellData, cellIndex) => {
+          // Truncate long text to fit column width - more aggressive truncation
+          let displayText = cellData;
+          if (cellData.length > 12 && cellIndex !== 0) {
+            displayText = cellData.substring(0, 10) + '...';
+          }
+          
+          doc.text(displayText, colPositions[cellIndex], yPosition);
+        });
+        
+        yPosition += lineHeight;
+        
+        // Add separator line every few rows - less frequent
+        if ((index + 1) % 8 === 0) {
+          doc.setDrawColor(200, 200, 200);
+          doc.line(20, yPosition - 1, 190, yPosition - 1);
+          yPosition += 2; // Reduced spacing
+        }
+      });
+      
+      // Add footer - more compact
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Generated by ShareKhata - Split expenses with friends easily', 105, pageHeight - 8, { align: 'center' });
+      
+      // Save the PDF
+      const fileName = `ShareKhata_${ledger.friend.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      console.log('✅ PDF generated successfully:', fileName);
+    } catch (error) {
+      console.error('❌ PDF generation failed:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -328,8 +464,8 @@ const Ledger = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      {/* Friend Info Header */}
+      <div className="bg-blue-100 shadow-sm">
         <div className="px-4 py-4">
           <div className="flex items-center space-x-3">
             <button
@@ -372,7 +508,7 @@ const Ledger = () => {
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-red-600">
-                ₹{(() => {
+                Rs {(() => {
                   // Debug: Log all transaction data first
                   console.log('🔍 SUMMARY DEBUG - All transactions:', ledger.transactions);
                   console.log('🔍 SUMMARY DEBUG - Current user mobile:', user?.mobile);
@@ -408,7 +544,7 @@ const Ledger = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-green-600">
-                ₹{(() => {
+                Rs {(() => {
                   // FIXED LOGIC: You received = you are the receiver (receivedBy matches your mobile)
                   const youReceived = ledger.transactions
                     .filter(t => {
@@ -463,6 +599,14 @@ const Ledger = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Transactions</h3>
+            <button
+              onClick={() => generatePDF(ledger.transactions)}
+              className="flex items-center space-x-2 text-blue-600 px-4 py-2 rounded-lg transition-colors"
+              title="Export transactions as PDF"
+            >
+              <Download className="h-4 w-4" />
+              <span className="text-sm font-medium">Export PDF</span>
+            </button>
           </div>
 
           <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
@@ -477,7 +621,7 @@ const Ledger = () => {
           </div>
 
           {/* Symbol Legend */}
-          <div className="flex items-center justify-center space-x-6 mb-4 text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center justify-center space-x-6 mb-4 text-xs text-gray-500 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
                 <Plus className="h-3 w-3" />
@@ -578,7 +722,7 @@ const Ledger = () => {
                         </span>
                       </div>
                       <span className="font-semibold text-gray-900">
-                        ₹{transaction.amount}
+                        Rs {transaction.amount}
                       </span>
                     </div>
 
@@ -606,7 +750,7 @@ const Ledger = () => {
 
       {/* Transaction Modal */}
       {showAmountModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/70 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {transactionType === 'added' ? 'I Paid' : 'I Received'}
@@ -615,7 +759,7 @@ const Ledger = () => {
             <form onSubmit={handleTransactionSubmit} className="space-y-4">
               <div>
                 <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount (₹)
+                  Amount (Rs )
                 </label>
                 <input
                   id="amount"

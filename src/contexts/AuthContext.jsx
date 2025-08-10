@@ -19,6 +19,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastRoute, setLastRoute] = useState(null);
 
   // Configure axios defaults
   useEffect(() => {
@@ -35,6 +36,12 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/auth/profile`);
       setUser(response.data.user);
+      
+      // Restore last visited route after user is loaded
+      const savedRoute = localStorage.getItem('lastRoute');
+      if (savedRoute) {
+        setLastRoute(savedRoute);
+      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
       localStorage.removeItem('token');
@@ -92,21 +99,33 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('lastRoute'); // Clear saved route on logout
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);
+    setLastRoute(null);
   };
 
   const updateUser = (updatedUser) => {
     setUser(updatedUser);
   };
 
+  // Function to save the current route
+  const saveRoute = (route) => {
+    if (route && route !== '/login' && route !== '/register') {
+      localStorage.setItem('lastRoute', route);
+      setLastRoute(route);
+    }
+  };
+
   const value = {
     user,
     loading,
+    lastRoute,
     login,
     register,
     logout,
-    updateUser
+    updateUser,
+    saveRoute
   };
 
   return (

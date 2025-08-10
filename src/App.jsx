@@ -1,34 +1,68 @@
 
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Header from './components/Header';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Ledger from './components/Ledger';
 import AddFriend from './components/AddFriend';
+import Profile from './components/Profile';
 import './App.css';
 
-// Protected Route Component
+// Route Tracker Component
+const RouteTracker = () => {
+  const location = useLocation();
+  const { saveRoute } = useAuth();
+
+  useEffect(() => {
+    saveRoute(location.pathname);
+  }, [location.pathname, saveRoute]);
+
+  return null;
+};
+
+// Protected Route Component with Header
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" />;
+  
+  return (
+    <>
+      <Header />
+      {children}
+    </>
+  );
 };
 
 // Main App Component
 const AppContent = () => {
-  const { user } = useAuth();
+  const { user, lastRoute, loading } = useAuth();
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <RouteTracker />
       <Routes>
         <Route 
           path="/login" 
-          element={user ? <Navigate to="/dashboard" /> : <Login />} 
+          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Login />} 
         />
         <Route 
           path="/register" 
-          element={user ? <Navigate to="/dashboard" /> : <Register />} 
+          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Register />} 
         />
         <Route 
           path="/dashboard" 
@@ -55,8 +89,16 @@ const AppContent = () => {
           } 
         />
         <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/" 
-          element={<Navigate to={user ? "/dashboard" : "/login"} />} 
+          element={<Navigate to={user ? (lastRoute || "/dashboard") : "/login"} />} 
         />
       </Routes>
     </div>

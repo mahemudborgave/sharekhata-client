@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Smartphone, User, Check } from 'lucide-react';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone';
+import User from 'lucide-react/dist/esm/icons/user';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Clock from 'lucide-react/dist/esm/icons/clock';
 import axios from 'axios';
 
 // Get API base URL from environment
@@ -8,10 +12,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 const AddFriend = () => {
   const [mobile, setMobile] = useState('');
+  const [customName, setCustomName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [friendData, setFriendData] = useState(null);
+  const [isRegistered, setIsRegistered] = useState(false);
   
   const navigate = useNavigate();
 
@@ -20,6 +26,7 @@ const AddFriend = () => {
     setError('');
     setSuccess(false);
     setFriendData(null);
+    setIsRegistered(false);
 
     console.log('🔄 ADDING FRIEND - START');
     console.log('📱 Friend Mobile:', mobile);
@@ -36,10 +43,16 @@ const AddFriend = () => {
       return;
     }
 
+    if (!customName || !customName.trim()) {
+      console.log('❌ Missing friend name');
+      setError('Please enter your friend\'s name');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const requestData = { mobile };
+      const requestData = { mobile, customName: customName.trim() };
       console.log('📡 API URL:', `${API_BASE_URL}/auth/add-friend`);
       console.log('📦 Request data:', requestData);
       
@@ -48,15 +61,19 @@ const AddFriend = () => {
       console.log('✅ ADD FRIEND RESPONSE:', response.data);
       console.log('👤 Friend data:', response.data.friend);
       console.log('📋 Ledger ID:', response.data.ledgerId);
+      console.log('📊 Status:', response.data.status);
+      console.log('✅ Is Registered:', response.data.isRegistered);
       
       setFriendData(response.data.friend);
+      setIsRegistered(response.data.isRegistered);
       setSuccess(true);
       
-      // Auto-navigate after 2 seconds
+      // Auto-navigate after 3 seconds for registered friends, 5 seconds for pending
+      const delay = response.data.isRegistered ? 3000 : 5000;
       setTimeout(() => {
         console.log('🔄 Auto-navigating to ledger:', response.data.ledgerId);
         navigate(`/ledger/${response.data.ledgerId}`);
-      }, 2000);
+      }, delay);
       
       console.log('✅ ADDING FRIEND - COMPLETE');
     } catch (error) {
@@ -70,6 +87,22 @@ const AddFriend = () => {
 
   const handleBack = () => {
     navigate('/dashboard');
+  };
+
+  const getSuccessMessage = () => {
+    if (isRegistered) {
+      return 'Friend added successfully! Redirecting to ledger...';
+    } else {
+      return 'Friend request sent! They can start using the app and all transactions will be linked automatically.';
+    }
+  };
+
+  const getSuccessIcon = () => {
+    return isRegistered ? <Check className="h-5 w-5" /> : <Clock className="h-5 w-5" />;
+  };
+
+  const getSuccessColor = () => {
+    return isRegistered ? 'green' : 'blue';
   };
 
   return (
@@ -107,10 +140,10 @@ const AddFriend = () => {
           )}
 
           {success && friendData && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+            <div className={`bg-${getSuccessColor()}-50 border border-${getSuccessColor()}-200 text-${getSuccessColor()}-700 px-4 py-3 rounded-lg mb-4`}>
               <div className="flex items-center space-x-2">
-                <Check className="h-5 w-5" />
-                <span>Friend added successfully! Redirecting to ledger...</span>
+                {getSuccessIcon()}
+                <span>{getSuccessMessage()}</span>
               </div>
             </div>
           )}
@@ -137,7 +170,32 @@ const AddFriend = () => {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Only registered users can be added as friends
+                Works with both registered and unregistered users
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="customName" className="block text-sm font-medium text-gray-700 mb-2">
+                Friend's Name *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="customName"
+                  type="text"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Enter friend's name"
+                  maxLength="50"
+                  disabled={loading || success}
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                This name will be used instead of their registered name
               </p>
             </div>
 
@@ -153,12 +211,15 @@ const AddFriend = () => {
           {friendData && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                <div className={`w-10 h-10 ${isRegistered ? 'bg-green-500' : 'bg-blue-500'} rounded-full flex items-center justify-center text-white font-semibold`}>
                   {friendData.avatar || friendData.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{friendData.name}</h3>
                   <p className="text-sm text-gray-500">{friendData.mobile}</p>
+                  <p className={`text-xs ${isRegistered ? 'text-green-600' : 'text-blue-600'} font-medium`}>
+                    {isRegistered ? '✓ Registered User' : '⏳ Pending Registration'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -178,10 +239,11 @@ const AddFriend = () => {
         <div className="mt-6 bg-blue-50 rounded-lg p-4">
           <h3 className="font-medium text-blue-900 mb-2">How it works</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Enter your friend's mobile number</li>
-            <li>• If they're registered, they'll be added as a friend</li>
-            <li>• A shared ledger will be created automatically</li>
-            <li>• Start tracking expenses together!</li>
+            <li>• Enter your friend's mobile number and name</li>
+            <li>• If they're registered, they'll be added immediately</li>
+            <li>• If not registered, a friend request will be sent</li>
+            <li>• When they register later, all transactions will be linked automatically</li>
+            <li>• Start tracking expenses together right away!</li>
           </ul>
         </div>
       </div>

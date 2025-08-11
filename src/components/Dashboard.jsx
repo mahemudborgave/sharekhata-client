@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, User, ArrowRight, IndianRupee } from 'lucide-react';
+import { Plus, User, ArrowRight, IndianRupee, Clock } from 'lucide-react';
 import axios from 'axios';
 import Header from './Header';
 
@@ -10,6 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 const Dashboard = () => {
   const [ledgers, setLedgers] = useState([]);
+  const [pendingFriends, setPendingFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -17,25 +18,27 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchLedgers();
+    fetchData();
   }, []);
 
-  const fetchLedgers = async () => {
+  const fetchData = async () => {
     try {
-      console.log('🔄 FETCHING LEDGERS - START');
-      console.log('📡 API URL:', `${API_BASE_URL}/ledger`);
-      console.log('👤 Current user:', user);
+      console.log('🔄 FETCHING DASHBOARD DATA - START');
       
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/ledger`);
       
-      console.log('📦 LEDGERS RESPONSE:', response.data);
-      console.log('📊 LEDGERS COUNT:', response.data.ledgers.length);
-      console.log('📋 LEDGERS DATA:', response.data.ledgers);
+      // Fetch both ledgers and pending friends
+      const [ledgersResponse, pendingFriendsResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/ledger`),
+        axios.get(`${API_BASE_URL}/auth/pending-friends`)
+      ]);
       
-      // Fetch full transaction data for each ledger to calculate accurate balances
+      console.log('📦 LEDGERS RESPONSE:', ledgersResponse.data);
+      console.log('📦 PENDING FRIENDS RESPONSE:', pendingFriendsResponse.data);
+      
+      // Process ledgers with transactions
       const ledgersWithTransactions = await Promise.all(
-        response.data.ledgers.map(async (ledger) => {
+        ledgersResponse.data.ledgers.map(async (ledger) => {
           try {
             console.log(`🔄 Fetching transactions for ledger ${ledger.id}`);
             const ledgerResponse = await axios.get(`${API_BASE_URL}/ledger/${ledger.id}`);
@@ -46,18 +49,19 @@ const Dashboard = () => {
             };
           } catch (error) {
             console.error(`❌ Failed to fetch transactions for ledger ${ledger.id}:`, error);
-            return ledger; // Return original ledger if transaction fetch fails
+            return ledger;
           }
         })
       );
       
-      console.log('📦 LEDGERS WITH TRANSACTIONS:', ledgersWithTransactions);
       setLedgers(ledgersWithTransactions);
-      console.log('✅ FETCHING LEDGERS - COMPLETE');
+      setPendingFriends(pendingFriendsResponse.data.pendingFriends);
+      
+      console.log('✅ FETCHING DASHBOARD DATA - COMPLETE');
     } catch (error) {
-      console.error('❌ FETCHING LEDGERS - ERROR:', error);
+      console.error('❌ FETCHING DASHBOARD DATA - ERROR:', error);
       console.error('❌ Error response:', error.response?.data);
-      setError('Failed to load ledgers');
+      setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -217,7 +221,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          {ledgers.length === 0 ? (
+          {ledgers.length === 0 && pendingFriends.length === 0 ? (
             <div className="text-center py-12">
               <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No friends yet</h3>
@@ -230,68 +234,120 @@ const Dashboard = () => {
               </button>
             </div>
           ) : (
-            ledgers.map((ledger) => {
-              // Debug logging to see what data we're working with
-              console.log('🔍 LEDGER DEBUG:', {
-                ledgerId: ledger.id,
-                friendName: ledger.friend.name,
-                friendMobile: ledger.friend.mobile,
-                serverBalance: ledger.balance,
-                hasTransactions: !!ledger.transactions,
-                transactionsType: typeof ledger.transactions,
-                transactionsLength: ledger.transactions?.length,
-                firstTransaction: ledger.transactions?.[0],
-                allTransactions: ledger.transactions
-              });
-              
-              // Calculate the correct balance using the same logic as Ledger page
-              // Now we should always have transactions data for accurate calculation
-              const calculatedBalance = ledger.transactions && ledger.transactions.length > 0 
-                ? calculateFrontendBalance(ledger.transactions) 
-                : ledger.balance;
-              
-              console.log('💰 BALANCE CALCULATION RESULT:', {
-                ledgerId: ledger.id,
-                calculatedBalance,
-                serverBalance: ledger.balance,
-                match: calculatedBalance === ledger.balance,
-                usedServerBalance: !ledger.transactions || ledger.transactions.length === 0,
-                transactionCount: ledger.transactions?.length || 0
-              });
-              
-              return (
-                <div
-                  key={ledger.id}
-                  onClick={() => navigate(`/ledger/${ledger.id}`)}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {getAvatar(ledger.friend)}
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{ledger.friend.name}</h3>
-                        <p className="text-sm text-gray-500">{ledger.friend.mobile}</p>
-                      </div>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-gray-400" />
-                  </div>
-                  
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Balance</span>
-                      <span className={`font-semibold ${getBalanceColor(calculatedBalance)}`}>
-                        {formatBalance(calculatedBalance)}
-                      </span>
-                    </div>
+            <>
+              {/* Active Friends */}
+              {ledgers.length > 0 && (
+                <div className="space-y-3">
+                  {ledgers.map((ledger) => {
+                    // Debug logging to see what data we're working with
+                    console.log('🔍 LEDGER DEBUG:', {
+                      ledgerId: ledger.id,
+                      friendName: ledger.friend.name,
+                      friendMobile: ledger.friend.mobile,
+                      serverBalance: ledger.balance,
+                      hasTransactions: !!ledger.transactions,
+                      transactionsType: typeof ledger.transactions,
+                      transactionsLength: ledger.transactions?.length,
+                      firstTransaction: ledger.transactions?.[0],
+                      allTransactions: ledger.transactions
+                    });
                     
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-sm text-gray-600">Transactions</span>
-                      <span className="text-sm text-gray-500">{ledger.transactionCount || 0}</span>
-                    </div>
+                    // Calculate the correct balance using the same logic as Ledger page
+                    // Now we should always have transactions data for accurate calculation
+                    const calculatedBalance = ledger.transactions && ledger.transactions.length > 0 
+                      ? calculateFrontendBalance(ledger.transactions) 
+                      : ledger.balance;
+                    
+                    console.log('💰 BALANCE CALCULATION RESULT:', {
+                      ledgerId: ledger.id,
+                      calculatedBalance,
+                      serverBalance: ledger.balance,
+                      match: calculatedBalance === ledger.balance,
+                      usedServerBalance: !ledger.transactions || ledger.transactions.length === 0,
+                      transactionCount: ledger.transactions?.length || 0
+                    });
+                    
+                    return (
+                      <div
+                        key={ledger.id}
+                        onClick={() => navigate(`/ledger/${ledger.id}`)}
+                        className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            {getAvatar(ledger.friend)}
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{ledger.friend.name}</h3>
+                              <p className="text-sm text-gray-500">{ledger.friend.mobile}</p>
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-gray-400" />
+                        </div>
+                        
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Balance</span>
+                            <span className={`font-semibold ${getBalanceColor(calculatedBalance)}`}>
+                              {formatBalance(calculatedBalance)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-sm text-gray-600">Transactions</span>
+                            <span className="text-sm text-gray-500">{ledger.transactionCount || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Pending Friends */}
+              {pendingFriends.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                    <Clock className="h-5 w-5 text-blue-500" />
+                    <span>Pending Friends</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {pendingFriends.map((pendingFriend) => (
+                      <div
+                        key={pendingFriend.id}
+                        onClick={() => navigate(`/ledger/${pendingFriend.ledgerId}`)}
+                        className="bg-blue-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                              ?
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{pendingFriend.name || 'Unregistered User'}</h3>
+                              <p className="text-sm text-gray-500">{pendingFriend.mobile}</p>
+                              <p className="text-xs text-blue-600 font-medium">Pending registration</p>
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-blue-400" />
+                        </div>
+                        
+                        <div className="mt-3 pt-3 border-t border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Status</span>
+                            <span className="text-sm text-blue-600 font-medium">Waiting for friend to register</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-sm text-gray-600">Ledger</span>
+                            <span className="text-sm text-gray-500">Ready for transactions</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              );
-            })
+              )}
+            </>
           )}
         </div>
 

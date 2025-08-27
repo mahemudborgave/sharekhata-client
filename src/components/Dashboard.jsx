@@ -344,8 +344,8 @@ const Dashboard = () => {
 
           {/* Right Section */}
           <div className="flex flex-col space-y-1">
-            <button className="bg-yellow-950/50 text-red-600 font-bold px-8 py-2 rounded-lg text-sm">
-              You Get ₹{" "}
+            <button className="bg-yellow-950/90 text-green-400 font-bold px-8 py-2 rounded-lg text-sm">
+              You Get Rs{" "}
               {ledgers.reduce((sum, ledger) => {
                 const balance = ledger.transactions && ledger.transactions.length > 0
                   ? calculateFrontendBalance(ledger.transactions)
@@ -353,8 +353,8 @@ const Dashboard = () => {
                 return balance > 0 ? sum + balance : sum;
               }, 0)}
             </button>
-            <button className="bg-yellow-950/50 text-green-600 font-bold px-8 py-2 rounded-lg text-sm">
-              You Give ₹{" "}
+            <button className="bg-yellow-950/90 text-red-400   font-bold px-8 py-2 rounded-lg text-sm">
+              You Give Rs{" "}
               {ledgers.reduce((sum, ledger) => {
                 const balance = ledger.transactions && ledger.transactions.length > 0
                   ? calculateFrontendBalance(ledger.transactions)

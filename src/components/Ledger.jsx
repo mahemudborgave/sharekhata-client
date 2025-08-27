@@ -167,6 +167,8 @@ const Ledger = () => {
     return `You need to give Rs ${Math.abs(balance)}`;
   };
 
+
+
   const getBalanceColor = (balance) => {
     if (balance === 0) return 'text-gray-600';
     if (balance > 0) return 'text-green-600';
@@ -265,11 +267,17 @@ const Ledger = () => {
 
     if (diffDays === 1) return 'Today';
     if (diffDays === 2) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    // if (diffDays <= 7) return `${diffDays - 1} days ago`;
 
-    return date.toLocaleDateString('en-IN', {
+    // return date.toLocaleDateString('en-US', {
+    //   month: 'short',
+    //   day: 'numeric', 
+    //   year: 'numeric'
+    // });
+    return date.toLocaleDateString('en-GB', {
       day: 'numeric',
-      month: 'short'
+      month: 'short',
+      year: 'numeric'
     });
   };
 
@@ -292,19 +300,19 @@ const Ledger = () => {
     try {
       // Create new jsPDF instance with proper configuration
       const doc = new jsPDF('p', 'mm', 'a4');
-      
+
       // Add header
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
       doc.text('ShareKhata - Transaction Report', 105, 15, { align: 'center' });
-      
+
       // Add ledger details - more compact spacing
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Friend: ${ledger.friend.name}`, 20, 25);
       doc.text(`Mobile: ${ledger.friend.mobile}`, 20, 31);
       doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN')}`, 20, 37);
-      
+
       // Clean balance text without special characters - use direct text
       const balance = calculateFrontendBalance(transactions);
       let balanceText = '';
@@ -319,12 +327,12 @@ const Ledger = () => {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Current Balance: ${balanceText}`, 20, 43);
-      
+
       // Add summary section - more compact
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Summary', 20, 52);
-      
+
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       const youPaid = transactions
@@ -333,42 +341,42 @@ const Ledger = () => {
       const youReceived = transactions
         .filter(t => t.receivedBy === user?.mobile)
         .reduce((sum, t) => sum + t.amount, 0);
-      
+
       // Clean amount text without special characters - use simple formatting
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`You Paid: Rs ${youPaid.toFixed(2)}`, 20, 59);
       doc.text(`You Received: Rs ${youReceived.toFixed(2)}`, 20, 65);
       doc.text(`Net Balance: Rs ${(youPaid - youReceived).toFixed(2)}`, 20, 71);
-      
+
       // Add transactions section - more compact
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Transaction Details', 20, 80);
-      
+
       // Manually create table structure - more compact
       let yPosition = 88;
       const lineHeight = 6; // Reduced from 8 to 6
       const colWidths = [12, 35, 22, 32, 22, 18, 30];
       const colPositions = [20, 32, 67, 89, 121, 143, 161];
-      
+
       // Table header - more compact
       doc.setFillColor(59, 130, 246);
       doc.rect(20, yPosition - 4, 170, 6, 'F'); // Reduced height from 8 to 6
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
-      
+
       const headers = ['#', 'Type', 'Amount', 'Description', 'Date', 'Time', 'Category'];
       headers.forEach((header, index) => {
         doc.text(header, colPositions[index], yPosition);
       });
-      
+
       yPosition += 10; // Reduced from 15 to 10
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      
+
       // Table rows - more compact
       transactions.forEach((transaction, index) => {
         // Check if we need a new page - adjusted threshold
@@ -376,14 +384,14 @@ const Ledger = () => {
           doc.addPage();
           yPosition = 15;
         }
-        
+
         const isCurrentUserSent = transaction.sentBy === user?.mobile;
         const isCurrentUserReceived = transaction.receivedBy === user?.mobile;
         const isCurrentUserInvolved = isCurrentUserSent || isCurrentUserReceived;
-        
+
         const rowData = [
           (index + 1).toString(),
-          isCurrentUserInvolved 
+          isCurrentUserInvolved
             ? (isCurrentUserSent ? 'You Paid' : 'You Received')
             : (transaction.addedBy?.name || 'Unknown'),
           `Rs ${transaction.amount.toFixed(2)}`,
@@ -396,7 +404,7 @@ const Ledger = () => {
           }),
           isCurrentUserInvolved ? 'Your Transaction' : 'Friend\'s Transaction'
         ];
-        
+
         // Add row data
         rowData.forEach((cellData, cellIndex) => {
           // Truncate long text to fit column width - more aggressive truncation
@@ -404,12 +412,12 @@ const Ledger = () => {
           if (cellData.length > 12 && cellIndex !== 0) {
             displayText = cellData.substring(0, 10) + '...';
           }
-          
+
           doc.text(displayText, colPositions[cellIndex], yPosition);
         });
-        
+
         yPosition += lineHeight;
-        
+
         // Add separator line every few rows - less frequent
         if ((index + 1) % 8 === 0) {
           doc.setDrawColor(200, 200, 200);
@@ -417,17 +425,17 @@ const Ledger = () => {
           yPosition += 2; // Reduced spacing
         }
       });
-      
+
       // Add footer - more compact
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(7);
       doc.setFont('helvetica', 'italic');
       doc.text('Generated by ShareKhata - Split expenses with friends easily', 105, pageHeight - 8, { align: 'center' });
-      
+
       // Save the PDF
       const fileName = `ShareKhata_${ledger.friend.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
-      
+
       console.log('✅ PDF generated successfully:', fileName);
     } catch (error) {
       console.error('❌ PDF generation failed:', error);
@@ -507,12 +515,12 @@ const Ledger = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-red-600">
-                Rs {(() => {
+              <div className="text-2xl font-bold text-red-600 flex items-center justify-center">
+                <IndianRupee size={20} /> {(() => {
                   // Debug: Log all transaction data first
-                  console.log('🔍 SUMMARY DEBUG - All transactions:', ledger.transactions);
-                  console.log('🔍 SUMMARY DEBUG - Current user mobile:', user?.mobile);
-                  console.log('🔍 SUMMARY DEBUG - User object:', user);
+                  // console.log('🔍 SUMMARY DEBUG - All transactions:', ledger.transactions);
+                  // console.log('🔍 SUMMARY DEBUG - Current user mobile:', user?.mobile);
+                  // console.log('🔍 SUMMARY DEBUG - User object:', user);
 
                   // FIXED LOGIC: You paid = you are the sender (sentBy matches your mobile)
                   const youPaid = ledger.transactions
@@ -543,8 +551,8 @@ const Ledger = () => {
               <div className="text-sm text-gray-600">You Paid</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-green-600">
-                Rs {(() => {
+              <div className="text-2xl font-bold text-green-600 flex items-center justify-center">
+                <IndianRupee size={20} /> {(() => {
                   // FIXED LOGIC: You received = you are the receiver (receivedBy matches your mobile)
                   const youReceived = ledger.transactions
                     .filter(t => {
@@ -582,7 +590,7 @@ const Ledger = () => {
             onClick={() => openTransactionModal('added')}
             className="bg-red-600 text-white py-4 px-6 rounded-xl font-semibold hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-2"
           >
-            <Plus className="h-5 w-5" />
+            <Minus className="h-5 w-5" />
             <span>I Paid</span>
           </button>
 
@@ -590,7 +598,7 @@ const Ledger = () => {
             onClick={() => openTransactionModal('received')}
             className="bg-green-600 text-white py-4 px-6 rounded-xl font-semibold hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-2"
           >
-            <Minus className="h-5 w-5" />
+            <Plus className="h-5 w-5" />
             <span>I Received</span>
           </button>
         </div>
@@ -598,7 +606,7 @@ const Ledger = () => {
         {/* Transactions List */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Transactions</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Transactions <span className='text-gray-400'>({ledger.transactions.length})</span></h3>
             <button
               onClick={() => generatePDF(ledger.transactions)}
               className="flex items-center space-x-2 text-blue-600 px-4 py-2 rounded-lg transition-colors"
@@ -671,7 +679,9 @@ const Ledger = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {ledger.transactions.map((transaction) => {
+              {ledger.transactions.map((transaction, index) => {
+                // Calculate transaction number (reverse index so newest is #1)
+                const transactionNumber = ledger.transactions.length - index;
                 // Determine transaction ownership and flow
                 const isCurrentUserSent = transaction.sentBy === user.mobile;
                 const isCurrentUserReceived = transaction.receivedBy === user.mobile;
@@ -698,15 +708,36 @@ const Ledger = () => {
                   <div
                     key={transaction.id}
                     className={`p-4 rounded-lg border ${transaction.addedBy.id === user?.id
-                        ? 'bg-blue-50 border-blue-200' // Blue for transactions performed by logged user
-                        : 'bg-yellow-50 border-yellow-200' // Yellow for transactions performed by friend
+                      ? 'bg-blue-50 border-blue-200' // Blue for transactions performed by logged user
+                      : 'bg-yellow-50 border-yellow-200' // Yellow for transactions performed by friend
                       }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center space-x-2">
+                        {/* Transaction Number */}
+                        <div className="w-6 h-6 rounded-full bg-gray-500 text-white flex items-center justify-center text-xs font-semibold">
+                          {transactionNumber}
+                        </div>
+
+                        {/* <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMoneyReceived
+                          ? 'bg-green-100 text-green-600' // Green for received money
+                          : 'bg-red-100 text-red-600'     // Red for sent money
+                          }`}>
+                          {isMoneyReceived ? (
+                            <Plus className="h-4 w-4" />  // + for received
+                          ) : (
+                            <Minus className="h-4 w-4" /> // - for sent
+                          )}
+                        </div> */}
+                        <span className="font-medium text-gray-900">
+                          {isCurrentUserInvolved
+                            ? (isCurrentUserSent ? 'You paid' : 'You received')
+                            : (isCurrentUserReceived ? `${transaction.addedBy.name} paid` : `${transaction.addedBy.name} received`)
+                          }
+                        </span>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMoneyReceived
-                            ? 'bg-green-100 text-green-600' // Green for received money
-                            : 'bg-red-100 text-red-600'     // Red for sent money
+                          ? 'bg-green-100 text-green-600' // Green for received money
+                          : 'bg-red-100 text-red-600'     // Red for sent money
                           }`}>
                           {isMoneyReceived ? (
                             <Plus className="h-4 w-4" />  // + for received
@@ -714,15 +745,12 @@ const Ledger = () => {
                             <Minus className="h-4 w-4" /> // - for sent
                           )}
                         </div>
-                        <span className="font-medium text-gray-900">
-                          {isCurrentUserInvolved
-                            ? (isCurrentUserSent ? 'You paid' : 'You received')
-                            : (isCurrentUserReceived ? `${transaction.addedBy.name} paid` : `${transaction.addedBy.name} received`)
-                          }
-                        </span>
                       </div>
-                      <span className="font-semibold text-gray-900">
-                        Rs {transaction.amount}
+                      <span className={`font-semibold flex items-center justify-between ${isMoneyReceived
+                        ? ' text-green-600' // Green for received money
+                        : ' text-red-600'     // Red for sent money
+                        }`}>
+                        <IndianRupee size={15} className='text-gray-500' /> {transaction.amount}
                       </span>
                     </div>
 

@@ -40,8 +40,8 @@ const Header = () => {
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-100/30 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <span className="hidden sm:block text-base font-medium text-blue-800/70">
-                {user.name}
+              <span className="sm:block text-sm font-medium text-blue-800/70">
+                {user.name.split(" ")[0]}
               </span>
               <div className="w-8 h-8 bg-blue-800 rounded-full flex items-center justify-center">
                 <User className="h-5 w-5 text-white" />

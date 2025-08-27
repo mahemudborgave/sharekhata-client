@@ -12,7 +12,7 @@ const Dashboard = () => {
   const [ledgers, setLedgers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -25,14 +25,14 @@ const Dashboard = () => {
       console.log('🔄 FETCHING LEDGERS - START');
       console.log('📡 API URL:', `${API_BASE_URL}/ledger`);
       console.log('👤 Current user:', user);
-      
+
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/ledger`);
-      
+
       console.log('📦 LEDGERS RESPONSE:', response.data);
       console.log('📊 LEDGERS COUNT:', response.data.ledgers.length);
       console.log('📋 LEDGERS DATA:', response.data.ledgers);
-      
+
       // Fetch full transaction data for each ledger to calculate accurate balances
       const ledgersWithTransactions = await Promise.all(
         response.data.ledgers.map(async (ledger) => {
@@ -50,7 +50,7 @@ const Dashboard = () => {
           }
         })
       );
-      
+
       console.log('📦 LEDGERS WITH TRANSACTIONS:', ledgersWithTransactions);
       setLedgers(ledgersWithTransactions);
       console.log('✅ FETCHING LEDGERS - COMPLETE');
@@ -84,7 +84,7 @@ const Dashboard = () => {
 
     transactions.forEach((transaction, index) => {
       console.log(`🔍 Processing transaction ${index + 1}:`, transaction);
-      
+
       // Check if this transaction involves the current user using mobile numbers
       const currentUserMobile = user?.mobile;
       const isCurrentUserSent = transaction.sentBy === currentUserMobile;
@@ -138,7 +138,7 @@ const Dashboard = () => {
 
   const formatBalance = (balance) => {
     if (balance === 0) return 'All settled';
-    if (balance > 0) return `You get Rs ${balance}`;
+    if (balance > 0) return `You will get Rs ${balance}`;
     return `You need to give Rs ${Math.abs(balance)}`;
   };
 
@@ -151,14 +151,14 @@ const Dashboard = () => {
   const getAvatar = (user) => {
     if (user.avatar && user.avatar.startsWith('http')) {
       return (
-        <img 
-          src={user.avatar} 
+        <img
+          src={user.avatar}
           alt={user.name}
           className="w-10 h-10 rounded-full object-cover"
         />
       );
     }
-    
+
     return (
       <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
         {user.avatar || user.name.charAt(0).toUpperCase()}
@@ -198,6 +198,17 @@ const Dashboard = () => {
 
       {/* Content */}
       <div className="max-w-md mx-auto px-4 py-6">
+        <div className='text-center mb-2'>
+          <a
+              href="https://drive.google.com/file/d/1k9SQoKd1uR6iWtdJlgjM7p0bYJgmbLL0/view?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-center text-yellow-700 text-base underline"
+            >
+              See how to use Sharekhata
+            </a>
+        </div>
+
         {/* Add Friend Button */}
         <button
           onClick={() => navigate('/add-friend')}
@@ -210,7 +221,7 @@ const Dashboard = () => {
         {/* Friends & Ledgers */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Friends</h2>
-          
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
               {error}
@@ -243,13 +254,13 @@ const Dashboard = () => {
                 firstTransaction: ledger.transactions?.[0],
                 allTransactions: ledger.transactions
               });
-              
+
               // Calculate the correct balance using the same logic as Ledger page
               // Now we should always have transactions data for accurate calculation
-              const calculatedBalance = ledger.transactions && ledger.transactions.length > 0 
-                ? calculateFrontendBalance(ledger.transactions) 
+              const calculatedBalance = ledger.transactions && ledger.transactions.length > 0
+                ? calculateFrontendBalance(ledger.transactions)
                 : ledger.balance;
-              
+
               console.log('💰 BALANCE CALCULATION RESULT:', {
                 ledgerId: ledger.id,
                 calculatedBalance,
@@ -258,7 +269,7 @@ const Dashboard = () => {
                 usedServerBalance: !ledger.transactions || ledger.transactions.length === 0,
                 transactionCount: ledger.transactions?.length || 0
               });
-              
+
               return (
                 <div
                   key={ledger.id}
@@ -275,7 +286,7 @@ const Dashboard = () => {
                     </div>
                     <ArrowRight className="h-5 w-5 text-gray-400" />
                   </div>
-                  
+
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Balance</span>
@@ -283,7 +294,7 @@ const Dashboard = () => {
                         {formatBalance(calculatedBalance)}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-sm text-gray-600">Transactions</span>
                       <span className="text-sm text-gray-500">{ledger.transactionCount || 0}</span>
@@ -300,6 +311,14 @@ const Dashboard = () => {
           <p className="text-gray-400 text-sm">
             ShareKhata - Split expenses with friends easily
           </p>
+          <a
+            href="https://forms.gle/mWg7EUnTzexXm8Kp6"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-700 text-sm underline"
+          >
+            Give Feedback
+          </a>
         </div>
       </div>
     </div>

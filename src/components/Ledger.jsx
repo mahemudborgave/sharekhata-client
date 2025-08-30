@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download, Copy, MessageSquare, Share2, Check } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import jsPDF from 'jspdf';
@@ -18,6 +18,8 @@ const Ledger = () => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showShareSection, setShowShareSection] = useState(false);
 
   const { user } = useAuth();
   const { id: ledgerId } = useParams();
@@ -167,8 +169,6 @@ const Ledger = () => {
     return `You need to give Rs ${Math.abs(balance)}`;
   };
 
-
-
   const getBalanceColor = (balance) => {
     if (balance === 0) return 'text-gray-600';
     if (balance > 0) return 'text-green-600';
@@ -241,6 +241,121 @@ const Ledger = () => {
     return balance;
   };
 
+  // Generate formatted text for sharing
+  const generateShareText = () => {
+    if (!ledger) return '';
+
+    const balance = calculateFrontendBalance(ledger.transactions);
+    const youPaid = ledger.transactions
+      .filter(t => t.sentBy === user?.mobile)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const youReceived = ledger.transactions
+      .filter(t => t.receivedBy === user?.mobile)
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    let balanceText = '';
+    if (balance === 0) {
+      balanceText = 'All settled ✅';
+    } else if (balance > 0) {
+      balanceText = `You need to give me Rs ${balance}`;
+    } else {
+      balanceText = `I need to give you Rs ${Math.abs(balance)}`;
+    }
+
+    let shareText = `SHAREKHATA REPORT\n`;
+    shareText += `═══════════════════════\n`;
+    shareText += `${user.name}(I) & ${ledger.friend.name}(You)\n`;
+    shareText += `Generated on ${new Date().toLocaleDateString('en-IN')}\n\n`;
+    
+    shareText += `CURRENT BALANCE\n`;
+    shareText += `─────────────────────\n`;
+    shareText += `${balanceText}\n\n`;
+    
+    shareText += `SUMMARY\n`;
+    shareText += `─────────────────────\n`;
+    shareText += `I Paid: Rs ${youPaid.toFixed(2)}\n`;
+    shareText += `I Received: Rs ${youReceived.toFixed(2)}\n`;
+    shareText += `Net: Rs ${(youPaid - youReceived).toFixed(2)}\n\n`;
+
+    if (ledger.transactions.length > 0) {
+      shareText += `TRANSACTIONS (${ledger.transactions.length})\n`;
+      shareText += `─────────────────────\n`;
+      
+      ledger.transactions.forEach((transaction, index) => {
+        const isCurrentUserSent = transaction.sentBy === user.mobile;
+        const isCurrentUserReceived = transaction.receivedBy === user.mobile;
+        const transactionNumber = ledger.transactions.length - index;
+        
+        const typeText = isCurrentUserSent 
+          ? `${user.name} paid` 
+          : `${user.name} received`;
+        
+        const date = new Date(transaction.timestamp).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short'
+        });
+        
+        shareText += `${transactionNumber}. ${typeText} Rs ${transaction.amount}`;
+        if (transaction.description) {
+          shareText += ` (${transaction.description})`;
+        }
+        shareText += ` - ${date}\n`;
+      });
+    }
+
+    shareText += `\n💡 Track expenses with ShareKhata`;
+    
+    return shareText;
+  };
+
+  // Handle copy to clipboard
+  const handleCopy = async () => {
+    try {
+      const shareText = generateShareText();
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = generateShareText();
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // Handle SMS sharing
+  const handleSMS = () => {
+    const shareText = generateShareText();
+    const encodedText = encodeURIComponent(shareText);
+    // Option 1: Open SMS app without specific recipient (current behavior)
+    // window.open(`sms:?body=${encodedText}`, '_self');
+    
+    // Option 2: Send to friend's mobile number directly (uncomment to use)
+    const friendMobile = ledger.friend.mobile;
+    window.open(`sms:${friendMobile}?body=${encodedText}`, '_self');
+  };
+
+  // Handle WhatsApp sharing
+  const handleWhatsApp = () => {
+    const shareText = generateShareText();
+    const encodedText = encodeURIComponent(shareText);
+    // Option 1: Open WhatsApp without specific recipient (current behavior)
+    // window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    
+    // Option 2: Send to friend's mobile number directly (uncomment to use)
+    const friendMobile = ledger.friend.mobile;
+    // // Remove any non-digit characters and ensure it starts with country code
+    const cleanMobile = friendMobile.replace(/\D/g, '');
+    const whatsappNumber = cleanMobile.startsWith('91') ? cleanMobile : `91${cleanMobile}`;
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodedText}`, '_blank');
+  };
+
   const getAvatar = (user) => {
     if (user.avatar && user.avatar.startsWith('http')) {
       return (
@@ -267,13 +382,7 @@ const Ledger = () => {
 
     if (diffDays === 1) return 'Today';
     if (diffDays === 2) return 'Yesterday';
-    // if (diffDays <= 7) return `${diffDays - 1} days ago`;
 
-    // return date.toLocaleDateString('en-US', {
-    //   month: 'short',
-    //   day: 'numeric', 
-    //   year: 'numeric'
-    // });
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -493,8 +602,75 @@ const Ledger = () => {
         </div>
       </div>
 
+      {/* Share Section */}
+      <div className="max-w-md mx-auto px-4 py-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          {/* Share Button/Dropdown Trigger */}
+          <button
+            onClick={() => setShowShareSection(!showShareSection)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors rounded-xl"
+          >
+            <div className="flex items-center space-x-2">
+              <Share2 className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-900">Notify Your Friend</span>
+            </div>
+            <svg
+              className={`h-4 w-4 text-gray-500 transform transition-transform ${showShareSection ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Collapsible Share Options */}
+          {showShareSection && (
+            <div className="px-4 pb-4">
+              <div className="border-t border-gray-200 pt-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={handleCopy}
+                    className="flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors space-y-1"
+                  >
+                    {copied ? (
+                      <Check className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Copy className="h-5 w-5 text-gray-600" />
+                    )}
+                    <span className="text-xs font-medium text-gray-700">
+                      {copied ? 'Copied!' : 'Copy'}
+                    </span>
+                  </button>
+                  <button
+                    onClick={handleSMS}
+                    className="flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors space-y-1"
+                  >
+                    <MessageSquare className="h-5 w-5 text-blue-600" />
+                    <span className="text-xs font-medium text-gray-700">SMS</span>
+                  </button>
+                  <button
+                    onClick={handleWhatsApp}
+                    className="flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 hover:bg-green-50 transition-colors space-y-1"
+                  >
+                    <svg
+                      className="h-5 w-5 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.106"/>
+                    </svg>
+                    <span className="text-xs font-medium text-gray-700">WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Content */}
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-md mx-auto px-4">
         {/* Balance Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="text-center">
@@ -644,33 +820,6 @@ const Ledger = () => {
             </div>
           </div>
 
-          {/* Debug Section - Temporary
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <h4 className="text-sm font-semibold text-red-800 mb-2">🔍 Debug - Transaction Colors</h4>
-            <div className="text-xs text-red-700 space-y-1">
-              <div><strong>Current User Mobile:</strong> {user?.mobile}</div>
-              <div><strong>User Mobile Type:</strong> {typeof user?.mobile}</div>
-              <div><strong>Total Transactions:</strong> {ledger.transactions.length}</div>
-              <div><strong>Test Comparison:</strong> "9356072952" === "9356072952" = {"9356072952" === "9356072952" ? "true" : "false"}</div>
-              {ledger.transactions.map((t, index) => {
-                const isPerformedByUser = t.addedBy.id === user?.id;
-                const isPerformedByFriend = t.addedBy.id !== user?.id;
-                return (
-                  <div key={t.id} className="ml-2">
-                    <strong>Transaction {index + 1}:</strong>
-                    <div className="ml-2">
-                      <div>addedBy.id: {t.addedBy.id}</div>
-                      <div>user.id: {user?.id}</div>
-                      <div>Performed by user: {isPerformedByUser ? "true" : "false"}</div>
-                      <div>Performed by friend: {isPerformedByFriend ? "true" : "false"}</div>
-                      <div>Will be: {isPerformedByUser ? "BLUE (User performed)" : "YELLOW (Friend performed)"}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div> */}
-
           {ledger.transactions.length === 0 ? (
             <div className="text-center py-8">
               <IndianRupee className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -719,16 +868,6 @@ const Ledger = () => {
                           {transactionNumber}
                         </div>
 
-                        {/* <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMoneyReceived
-                          ? 'bg-green-100 text-green-600' // Green for received money
-                          : 'bg-red-100 text-red-600'     // Red for sent money
-                          }`}>
-                          {isMoneyReceived ? (
-                            <Plus className="h-4 w-4" />  // + for received
-                          ) : (
-                            <Minus className="h-4 w-4" /> // - for sent
-                          )}
-                        </div> */}
                         <span className="font-medium text-gray-900">
                           {isCurrentUserInvolved
                             ? (isCurrentUserSent ? 'You paid' : 'You received')
@@ -841,4 +980,4 @@ const Ledger = () => {
   );
 };
 
-export default Ledger; 
+export default Ledger;

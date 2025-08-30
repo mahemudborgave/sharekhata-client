@@ -263,23 +263,23 @@ const Ledger = () => {
     }
 
     let shareText = `SHAREKHATA REPORT\n`;
-    shareText += `═══════════════════════\n`;
+    shareText += `══════════════\n`;
     shareText += `${user.name}(I) & ${ledger.friend.name}(You)\n`;
     shareText += `Generated on ${new Date().toLocaleDateString('en-IN')}\n\n`;
     
     shareText += `CURRENT BALANCE\n`;
-    shareText += `─────────────────────\n`;
+    shareText += `───────────────\n`;
     shareText += `${balanceText}\n\n`;
     
     shareText += `SUMMARY\n`;
-    shareText += `─────────────────────\n`;
+    shareText += `───────────────\n`;
     shareText += `I Paid: Rs ${youPaid.toFixed(2)}\n`;
     shareText += `I Received: Rs ${youReceived.toFixed(2)}\n`;
     shareText += `Net: Rs ${(youPaid - youReceived).toFixed(2)}\n\n`;
 
     if (ledger.transactions.length > 0) {
       shareText += `TRANSACTIONS (${ledger.transactions.length})\n`;
-      shareText += `─────────────────────\n`;
+      shareText += `───────────────\n`;
       
       ledger.transactions.forEach((transaction, index) => {
         const isCurrentUserSent = transaction.sentBy === user.mobile;

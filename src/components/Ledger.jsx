@@ -303,7 +303,8 @@ const Ledger = () => {
       });
     }
 
-    shareText += `\n💡 Track expenses with ShareKhata`;
+    shareText += `\n💡 Track expenses with ShareKhata\n`;
+    shareText += `Visit: https://sharekhata.vercel.app`;
     
     return shareText;
   };

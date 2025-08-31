@@ -304,7 +304,7 @@ const Ledger = () => {
     }
 
     shareText += `\n💡 Track expenses with ShareKhata\n`;
-    shareText += `Visit: https://sharekhata.vercel.app`;
+    shareText += `Visit: https://sharekhata.live`;
     
     return shareText;
   };

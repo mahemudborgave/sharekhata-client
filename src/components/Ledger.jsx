@@ -281,28 +281,29 @@ const Ledger = () => {
       shareText += `TRANSACTIONS (${ledger.transactions.length})\n`;
       shareText += `────────────\n`;
 
-      ledger.transactions
-        .slice(-5)
-        .forEach((transaction, index) => {
-          const isCurrentUserSent = transaction.sentBy === user.mobile;
-          const isCurrentUserReceived = transaction.receivedBy === user.mobile;
-          const transactionNumber = ledger.transactions.length - index;
+      const totalTransactions = ledger.transactions.length;
+      const start = Math.max(totalTransactions - 5, 0); // Ensure we don't go below 0
 
-          const typeText = isCurrentUserSent
-            ? `Paid`
-            : `Received`;
+      for (let i = totalTransactions; i > start; i--) {
+        const transaction = ledger.transactions[totalTransactions - i];
+        const isCurrentUserSent = transaction.sentBy === user.mobile;
+        const isCurrentUserReceived = transaction.receivedBy === user.mobile;
+        const transactionNumber = i;
 
-          const date = new Date(transaction.timestamp).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short'
-          });
+        const typeText = isCurrentUserSent ? `Paid` : `Received`;
 
-          shareText += `${transactionNumber}. ${typeText} ${transaction.amount}`;
-          shareText += ` - ${date}\n`;
-          if (transaction.description) {  
-            shareText += `  ${transaction.description}\n`;
-          }
+        const date = new Date(transaction.timestamp).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short'
         });
+
+        shareText += `${transactionNumber}. ${typeText} ${transaction.amount}`;
+        shareText += ` - ${date}\n`;
+        if (transaction.description) {
+          shareText += `  ${transaction.description}\n`;
+        }
+      }
+
     }
 
     shareText += `\n💡 Track complete history\n`;

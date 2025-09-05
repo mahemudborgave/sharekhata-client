@@ -38,17 +38,17 @@ const Ledger = () => {
   }, [ledgerId]);
 
   const setupSocket = () => {
-    console.log('🔌 SETTING UP SOCKET - START');
-    console.log('🌐 Socket URL:', API_BASE_URL);
-    console.log('📋 Ledger ID:', ledgerId);
+    // console.log('🔌 SETTING UP SOCKET - START');
+    // console.log('🌐 Socket URL:', API_BASE_URL);
+    // console.log('📋 Ledger ID:', ledgerId);
 
     socketRef.current = io(API_BASE_URL);
 
     socketRef.current.emit('join-ledger', ledgerId);
-    console.log('📡 Emitted join-ledger:', ledgerId);
+    // console.log('📡 Emitted join-ledger:', ledgerId);
 
     socketRef.current.on('ledger-updated', (updatedLedger) => {
-      console.log('🔄 SOCKET LEDGER UPDATE:', updatedLedger);
+      // console.log('🔄 SOCKET LEDGER UPDATE:', updatedLedger);
       setLedger(updatedLedger);
     });
 
@@ -69,31 +69,31 @@ const Ledger = () => {
 
   const fetchLedger = async () => {
     try {
-      console.log('🔄 FETCHING LEDGER - START');
-      console.log('📡 API URL:', `${API_BASE_URL}/ledger/${ledgerId}`);
-      console.log('👤 Current user:', user);
-      console.log('🆔 User ID:', user?.id, 'User _id:', user?._id);
-      console.log('👤 User name:', user?.name);
-      console.log('🔍 User object keys:', user ? Object.keys(user) : 'No user');
+      // console.log('🔄 FETCHING LEDGER - START');
+      // console.log('📡 API URL:', `${API_BASE_URL}/ledger/${ledgerId}`);
+      // console.log('👤 Current user:', user);
+      // console.log('🆔 User ID:', user?.id, 'User _id:', user?._id);
+      // console.log('👤 User name:', user?.name);
+      // console.log('🔍 User object keys:', user ? Object.keys(user) : 'No user');
 
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/ledger/${ledgerId}`);
 
-      console.log('📦 FULL SERVER RESPONSE:', response.data);
-      console.log('📊 LEDGER DATA:', response.data.ledger);
-      console.log('👥 FRIEND DATA:', response.data.ledger.friend);
-      console.log('📝 TRANSACTIONS COUNT:', response.data.ledger.transactions.length);
-      console.log('💰 SERVER BALANCE:', response.data.ledger.balance);
-      console.log('🔍 DEBUG DATA:', response.data.ledger.debug);
+      // console.log('📦 FULL SERVER RESPONSE:', response.data);
+      // console.log('📊 LEDGER DATA:', response.data.ledger);
+      // console.log('👥 FRIEND DATA:', response.data.ledger.friend);
+      // console.log('📝 TRANSACTIONS COUNT:', response.data.ledger.transactions.length);
+      // console.log('💰 SERVER BALANCE:', response.data.ledger.balance);
+      // console.log('🔍 DEBUG DATA:', response.data.ledger.debug);
 
       // Log first few transactions for debugging
       if (response.data.ledger.transactions.length > 0) {
-        console.log('🔍 FIRST TRANSACTION:', response.data.ledger.transactions[0]);
-        console.log('🔍 FIRST TRANSACTION addedBy:', response.data.ledger.transactions[0].addedBy);
+        // console.log('🔍 FIRST TRANSACTION:', response.data.ledger.transactions[0]);
+        // console.log('🔍 FIRST TRANSACTION addedBy:', response.data.ledger.transactions[0].addedBy);
       }
 
       setLedger(response.data.ledger);
-      console.log('✅ FETCHING LEDGER - COMPLETE');
+      // console.log('✅ FETCHING LEDGER - COMPLETE');
     } catch (error) {
       console.error('❌ FETCHING LEDGER - ERROR:', error);
       console.error('❌ Error response:', error.response?.data);
@@ -143,16 +143,16 @@ const Ledger = () => {
         description: description.trim()
       };
 
-      console.log('📡 API URL:', `${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`);
-      console.log('📦 Request data:', requestData);
+      // console.log('📡 API URL:', `${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`);
+      // console.log('📦 Request data:', requestData);
 
       const response = await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
 
-      console.log('✅ TRANSACTION RESPONSE:', response.data);
-      console.log('💰 NEW BALANCE:', response.data.balance);
+      // console.log('✅ TRANSACTION RESPONSE:', response.data);
+      // console.log('💰 NEW BALANCE:', response.data.balance);
 
       closeTransactionModal();
-      console.log('✅ SUBMITTING TRANSACTION - COMPLETE');
+      // console.log('✅ SUBMITTING TRANSACTION - COMPLETE');
     } catch (error) {
       console.error('❌ SUBMITTING TRANSACTION - ERROR:', error);
       console.error('❌ Error response:', error.response?.data);
@@ -163,7 +163,7 @@ const Ledger = () => {
   };
 
   const formatBalance = (balance) => {
-    console.log('Formatting balance:', balance);
+    // console.log('Formatting balance:', balance);
     if (balance === 0) return 'All settled';
     if (balance > 0) return `You will get Rs ${balance}`;
     return `You need to give Rs ${Math.abs(balance)}`;
@@ -180,63 +180,63 @@ const Ledger = () => {
     let userPaid = 0;
     let userReceived = 0;
 
-    console.log('=== BALANCE CALCULATION START ===');
-    console.log('Total transactions:', transactions.length);
-    console.log('🔍 Current user data:', user);
-    console.log('🔍 User mobile:', user?.mobile);
-    console.log('🔍 User name:', user?.name);
+    // console.log('=== BALANCE CALCULATION START ===');
+    // console.log('Total transactions:', transactions.length);
+    // console.log('🔍 Current user data:', user);
+    // console.log('🔍 User mobile:', user?.mobile);
+    // console.log('🔍 User name:', user?.name);
 
     transactions.forEach((transaction, index) => {
       // NEW LOGIC: Check transaction structure with sentBy/receivedBy
-      console.log(`Transaction ${index + 1}:`, {
-        type: transaction.type,
-        amount: transaction.amount,
-        sentBy: transaction.sentBy,
-        receivedBy: transaction.receivedBy,
-        addedBy: transaction.addedBy, // Keep for backward compatibility
-        currentUserMobile: user?.mobile,
-        currentUserName: user?.name
-      });
+      // console.log(`Transaction ${index + 1}:`, {
+      //   type: transaction.type,
+      //   amount: transaction.amount,
+      //   sentBy: transaction.sentBy,
+      //   receivedBy: transaction.receivedBy,
+      //   addedBy: transaction.addedBy, // Keep for backward compatibility
+      //   currentUserMobile: user?.mobile,
+      //   currentUserName: user?.name
+      // });
 
       // Check if this transaction involves the current user using mobile numbers
       const currentUserMobile = user?.mobile;
       const isCurrentUserSent = transaction.sentBy === currentUserMobile;
       const isCurrentUserReceived = transaction.receivedBy === currentUserMobile;
 
-      console.log(`🔍 Transaction ${index + 1} analysis:`);
-      console.log(`🔍 Current user mobile: ${currentUserMobile}`);
-      console.log(`🔍 Transaction sentBy: ${transaction.sentBy}`);
-      console.log(`🔍 Transaction receivedBy: ${transaction.receivedBy}`);
-      console.log(`🔍 Is current user sender: ${isCurrentUserSent}`);
-      console.log(`🔍 Is current user receiver: ${isCurrentUserReceived}`);
+      // console.log(`🔍 Transaction ${index + 1} analysis:`);
+      // console.log(`🔍 Current user mobile: ${currentUserMobile}`);
+      // console.log(`🔍 Transaction sentBy: ${transaction.sentBy}`);
+      // console.log(`🔍 Transaction receivedBy: ${transaction.receivedBy}`);
+      // console.log(`🔍 Is current user sender: ${isCurrentUserSent}`);
+      // console.log(`🔍 Is current user receiver: ${isCurrentUserReceived}`);
 
       if (isCurrentUserSent) {
         // You sent money to someone
         userPaid += transaction.amount;
-        console.log(`✅ You sent: +${transaction.amount}, Total sent: ${userPaid}`);
+        // console.log(`✅ You sent: +${transaction.amount}, Total sent: ${userPaid}`);
       } else if (isCurrentUserReceived) {
         // You received money from someone
         userReceived += transaction.amount;
-        console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
+        // console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
       }
     });
 
     // Calculate balance: positive means you get money, negative means you owe money
     const balance = userPaid - userReceived;
 
-    console.log('=== CALCULATION SUMMARY ===');
-    console.log(`You paid: Rs ${userPaid}`);
-    console.log(`You received: Rs ${userReceived}`);
-    console.log(`Final balance: Rs ${userPaid} - Rs ${userReceived} = Rs ${balance}`);
+    // console.log('=== CALCULATION SUMMARY ===');
+    // console.log(`You paid: Rs ${userPaid}`);
+    // console.log(`You received: Rs ${userReceived}`);
+    // console.log(`Final balance: Rs ${userPaid} - Rs ${userReceived} = Rs ${balance}`);
 
     if (balance > 0) {
-      console.log(`🎯 RESULT: You get Rs ${balance} from friend`);
+      // console.log(`🎯 RESULT: You get Rs ${balance} from friend`);
     } else if (balance < 0) {
-      console.log(`🎯 RESULT: You need to give Rs ${Math.abs(balance)} to friend`);
+      // console.log(`🎯 RESULT: You need to give Rs ${Math.abs(balance)} to friend`);
     } else {
-      console.log(`🎯 RESULT: All settled!`);
+      // console.log(`🎯 RESULT: All settled!`);
     }
-    console.log('=== BALANCE CALCULATION END ===');
+    // console.log('=== BALANCE CALCULATION END ===');
 
     return balance;
   };
@@ -264,48 +264,50 @@ const Ledger = () => {
 
     let shareText = `SHAREKHATA REPORT\n`;
     shareText += `══════════════\n`;
-    shareText += `${user.name}(I) & ${ledger.friend.name}(You)\n`;
-    shareText += `Generated on ${new Date().toLocaleDateString('en-IN')}\n\n`;
-    
-    shareText += `CURRENT BALANCE\n`;
-    shareText += `───────────────\n`;
+    // shareText += `${user.name}(I) & ${ledger.friend.name}(You)\n`;
+    // shareText += `Generated on ${new Date().toLocaleDateString('en-IN')}\n\n`;
+
+    // shareText += `CURRENT BALANCE\n`;
+    // shareText += `────────────\n`;
     shareText += `${balanceText}\n\n`;
-    
-    shareText += `SUMMARY\n`;
-    shareText += `───────────────\n`;
-    shareText += `I Paid: Rs ${youPaid.toFixed(2)}\n`;
-    shareText += `I Received: Rs ${youReceived.toFixed(2)}\n`;
-    shareText += `Net: Rs ${(youPaid - youReceived).toFixed(2)}\n\n`;
+
+    // shareText += `SUMMARY\n`;
+    // shareText += `────────────\n`;
+    // shareText += `I Paid: Rs ${youPaid.toFixed(2)}\n`;
+    // shareText += `I Received: Rs ${youReceived.toFixed(2)}\n`;
+    // shareText += `Net: Rs ${(youPaid - youReceived).toFixed(2)}\n\n`;
 
     if (ledger.transactions.length > 0) {
       shareText += `TRANSACTIONS (${ledger.transactions.length})\n`;
-      shareText += `───────────────\n`;
-      
-      ledger.transactions.forEach((transaction, index) => {
-        const isCurrentUserSent = transaction.sentBy === user.mobile;
-        const isCurrentUserReceived = transaction.receivedBy === user.mobile;
-        const transactionNumber = ledger.transactions.length - index;
-        
-        const typeText = isCurrentUserSent 
-          ? `${user.name} paid` 
-          : `${user.name} received`;
-        
-        const date = new Date(transaction.timestamp).toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short'
+      shareText += `────────────\n`;
+
+      ledger.transactions
+        .slice(-5)
+        .forEach((transaction, index) => {
+          const isCurrentUserSent = transaction.sentBy === user.mobile;
+          const isCurrentUserReceived = transaction.receivedBy === user.mobile;
+          const transactionNumber = ledger.transactions.length - index;
+
+          const typeText = isCurrentUserSent
+            ? `Paid`
+            : `Received`;
+
+          const date = new Date(transaction.timestamp).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short'
+          });
+
+          shareText += `${transactionNumber}. ${typeText} ${transaction.amount}`;
+          shareText += ` - ${date}\n`;
+          if (transaction.description) {  
+            shareText += `  ${transaction.description}\n`;
+          }
         });
-        
-        shareText += `${transactionNumber}. ${typeText} Rs ${transaction.amount}`;
-        if (transaction.description) {
-          shareText += ` (${transaction.description})`;
-        }
-        shareText += ` - ${date}\n`;
-      });
     }
 
-    shareText += `\n💡 Track expenses with ShareKhata\n`;
-    shareText += `Visit: https://sharekhata.live`;
-    
+    shareText += `\n💡 Track complete history\n`;
+    shareText += `Visit: https://sharekhata.live/ledger/${ledgerId}`;
+
     return shareText;
   };
 
@@ -336,7 +338,7 @@ const Ledger = () => {
     const encodedText = encodeURIComponent(shareText);
     // Option 1: Open SMS app without specific recipient (current behavior)
     // window.open(`sms:?body=${encodedText}`, '_self');
-    
+
     // Option 2: Send to friend's mobile number directly (uncomment to use)
     const friendMobile = ledger.friend.mobile;
     window.open(`sms:${friendMobile}?body=${encodedText}`, '_self');
@@ -348,7 +350,7 @@ const Ledger = () => {
     const encodedText = encodeURIComponent(shareText);
     // Option 1: Open WhatsApp without specific recipient (current behavior)
     // window.open(`https://wa.me/?text=${encodedText}`, '_blank');
-    
+
     // Option 2: Send to friend's mobile number directly (uncomment to use)
     const friendMobile = ledger.friend.mobile;
     // // Remove any non-digit characters and ensure it starts with country code
@@ -546,7 +548,7 @@ const Ledger = () => {
       const fileName = `ShareKhata_${ledger.friend.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
 
-      console.log('✅ PDF generated successfully:', fileName);
+      // console.log('✅ PDF generated successfully:', fileName);
     } catch (error) {
       console.error('❌ PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -659,7 +661,7 @@ const Ledger = () => {
                       fill="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.106"/>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.106" />
                     </svg>
                     <span className="text-xs font-medium text-gray-700">WhatsApp</span>
                   </button>
@@ -703,25 +705,25 @@ const Ledger = () => {
                   const youPaid = ledger.transactions
                     .filter(t => {
                       const isMatch = t.sentBy === user?.mobile;
-                      console.log(`🔍 Transaction filter check - You Paid:`, {
-                        transactionId: t.id,
-                        type: t.type,
-                        sentBy: t.sentBy,
-                        receivedBy: t.receivedBy,
-                        userMobile: user?.mobile,
-                        isMatch: isMatch,
-                        amount: t.amount
-                      });
+                      // console.log(`🔍 Transaction filter check - You Paid:`, {
+                      //   transactionId: t.id,
+                      //   type: t.type,
+                      //   sentBy: t.sentBy,
+                      //   receivedBy: t.receivedBy,
+                      //   userMobile: user?.mobile,
+                      //   isMatch: isMatch,
+                      //   amount: t.amount
+                      // });
                       return isMatch;
                     })
                     .reduce((sum, t) => sum + t.amount, 0);
 
-                  console.log('🔍 Summary - You Paid calculation:', {
-                    userMobile: user?.mobile,
-                    totalTransactions: ledger.transactions.length,
-                    matchingTransactions: ledger.transactions.filter(t => t.sentBy === user?.mobile),
-                    total: youPaid
-                  });
+                  // console.log('🔍 Summary - You Paid calculation:', {
+                  //   userMobile: user?.mobile,
+                  //   totalTransactions: ledger.transactions.length,
+                  //   matchingTransactions: ledger.transactions.filter(t => t.sentBy === user?.mobile),
+                  //   total: youPaid
+                  // });
                   return youPaid.toFixed(2);
                 })()}
               </div>
@@ -734,25 +736,25 @@ const Ledger = () => {
                   const youReceived = ledger.transactions
                     .filter(t => {
                       const isMatch = t.receivedBy === user?.mobile;
-                      console.log(`🔍 Transaction filter check - You Received:`, {
-                        transactionId: t.id,
-                        type: t.type,
-                        sentBy: t.sentBy,
-                        receivedBy: t.receivedBy,
-                        userMobile: user?.mobile,
-                        isMatch: isMatch,
-                        amount: t.amount
-                      });
+                      // console.log(`🔍 Transaction filter check - You Received:`, {
+                      //   transactionId: t.id,
+                      //   type: t.type,
+                      //   sentBy: t.sentBy,
+                      //   receivedBy: t.receivedBy,
+                      //   userMobile: user?.mobile,
+                      //   isMatch: isMatch,
+                      //   amount: t.amount
+                      // });
                       return isMatch;
                     })
                     .reduce((sum, t) => sum + t.amount, 0);
 
-                  console.log('🔍 Summary - You Received calculation:', {
-                    userMobile: user?.mobile,
-                    totalTransactions: ledger.transactions.length,
-                    matchingTransactions: ledger.transactions.filter(t => t.receivedBy === user?.mobile),
-                    total: youReceived
-                  });
+                  // console.log('🔍 Summary - You Received calculation:', {
+                  //   userMobile: user?.mobile,
+                  //   totalTransactions: ledger.transactions.length,
+                  //   matchingTransactions: ledger.transactions.filter(t => t.receivedBy === user?.mobile),
+                  //   total: youReceived
+                  // });
                   return youReceived.toFixed(2);
                 })()}
               </div>
@@ -842,17 +844,17 @@ const Ledger = () => {
                 const isMoneySent = isCurrentUserSent;
 
                 // Debug logging
-                console.log('🔍 Transaction color debug:', {
-                  transactionId: transaction.id,
-                  userMobile: user.mobile,
-                  transactionSentBy: transaction.sentBy,
-                  transactionReceivedBy: transaction.receivedBy,
-                  isCurrentUserSent,
-                  isCurrentUserReceived,
-                  isCurrentUserInvolved,
-                  willBeBlue: isCurrentUserInvolved,
-                  willBeYellow: !isCurrentUserInvolved
-                });
+                // console.log('🔍 Transaction color debug:', {
+                //   transactionId: transaction.id,
+                //   userMobile: user.mobile,
+                //   transactionSentBy: transaction.sentBy,
+                //   transactionReceivedBy: transaction.receivedBy,
+                //   isCurrentUserSent,
+                //   isCurrentUserReceived,
+                //   isCurrentUserInvolved,
+                //   willBeBlue: isCurrentUserInvolved,
+                //   willBeYellow: !isCurrentUserInvolved
+                // });
 
                 return (
                   <div

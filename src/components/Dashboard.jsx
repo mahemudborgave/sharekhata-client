@@ -23,24 +23,24 @@ const Dashboard = () => {
 
   const fetchLedgers = async () => {
     try {
-      console.log('🔄 FETCHING LEDGERS - START');
-      console.log('📡 API URL:', `${API_BASE_URL}/ledger`);
-      console.log('👤 Current user:', user);
+      // console.log('🔄 FETCHING LEDGERS - START');
+      // console.log('📡 API URL:', `${API_BASE_URL}/ledger`);
+      // console.log('👤 Current user:', user);
 
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/ledger`);
 
-      console.log('📦 LEDGERS RESPONSE:', response.data);
-      console.log('📊 LEDGERS COUNT:', response.data.ledgers.length);
-      console.log('📋 LEDGERS DATA:', response.data.ledgers);
+      // console.log('📦 LEDGERS RESPONSE:', response.data);
+      // console.log('📊 LEDGERS COUNT:', response.data.ledgers.length);
+      // console.log('📋 LEDGERS DATA:', response.data.ledgers);
 
       // Fetch full transaction data for each ledger to calculate accurate balances
       const ledgersWithTransactions = await Promise.all(
         response.data.ledgers.map(async (ledger) => {
           try {
-            console.log(`🔄 Fetching transactions for ledger ${ledger.id}`);
+            // console.log(`🔄 Fetching transactions for ledger ${ledger.id}`);
             const ledgerResponse = await axios.get(`${API_BASE_URL}/ledger/${ledger.id}`);
-            console.log(`✅ Ledger ${ledger.id} transactions:`, ledgerResponse.data.ledger.transactions);
+            // console.log(`✅ Ledger ${ledger.id} transactions:`, ledgerResponse.data.ledger.transactions);
             return {
               ...ledger,
               transactions: ledgerResponse.data.ledger.transactions
@@ -52,9 +52,9 @@ const Dashboard = () => {
         })
       );
 
-      console.log('📦 LEDGERS WITH TRANSACTIONS:', ledgersWithTransactions);
+      // console.log('📦 LEDGERS WITH TRANSACTIONS:', ledgersWithTransactions);
       setLedgers(ledgersWithTransactions);
-      console.log('✅ FETCHING LEDGERS - COMPLETE');
+      // console.log('✅ FETCHING LEDGERS - COMPLETE');
     } catch (error) {
       console.error('❌ FETCHING LEDGERS - ERROR:', error);
       console.error('❌ Error response:', error.response?.data);
@@ -68,69 +68,69 @@ const Dashboard = () => {
   const calculateFrontendBalance = (transactions) => {
     // Safety check: if transactions is undefined or null, return 0
     if (!transactions || !Array.isArray(transactions)) {
-      console.log('⚠️ No transactions array found, returning 0 balance');
-      console.log('⚠️ Transactions value:', transactions);
-      console.log('⚠️ Transactions type:', typeof transactions);
+      // console.log('⚠️ No transactions array found, returning 0 balance');
+      // console.log('⚠️ Transactions value:', transactions);
+      // console.log('⚠️ Transactions type:', typeof transactions);
       return 0;
     }
 
     let userPaid = 0;
     let userReceived = 0;
 
-    console.log('=== DASHBOARD BALANCE CALCULATION START ===');
-    console.log('Total transactions:', transactions.length);
-    console.log('🔍 Current user data:', user);
-    console.log('🔍 User mobile:', user?.mobile);
-    console.log('🔍 All transactions data:', transactions);
+    // console.log('=== DASHBOARD BALANCE CALCULATION START ===');
+    // console.log('Total transactions:', transactions.length);
+    // console.log('🔍 Current user data:', user);
+    // console.log('🔍 User mobile:', user?.mobile);
+    // console.log('🔍 All transactions data:', transactions);
 
     transactions.forEach((transaction, index) => {
-      console.log(`🔍 Processing transaction ${index + 1}:`, transaction);
+      // console.log(`🔍 Processing transaction ${index + 1}:`, transaction);
 
       // Check if this transaction involves the current user using mobile numbers
       const currentUserMobile = user?.mobile;
       const isCurrentUserSent = transaction.sentBy === currentUserMobile;
       const isCurrentUserReceived = transaction.receivedBy === currentUserMobile;
 
-      console.log(`🔍 Transaction ${index + 1} analysis:`, {
-        transactionId: transaction.id,
-        amount: transaction.amount,
-        sentBy: transaction.sentBy,
-        receivedBy: transaction.receivedBy,
-        currentUserMobile,
-        isCurrentUserSent,
-        isCurrentUserReceived,
-        sentByMatch: transaction.sentBy === currentUserMobile,
-        receivedByMatch: transaction.receivedBy === currentUserMobile
-      });
+      // console.log(`🔍 Transaction ${index + 1} analysis:`, {
+      //   transactionId: transaction.id,
+      //   amount: transaction.amount,
+      //   sentBy: transaction.sentBy,
+      //   receivedBy: transaction.receivedBy,
+      //   currentUserMobile,
+      //   isCurrentUserSent,
+      //   isCurrentUserReceived,
+      //   sentByMatch: transaction.sentBy === currentUserMobile,
+      //   receivedByMatch: transaction.receivedBy === currentUserMobile
+      // });
 
       if (isCurrentUserSent) {
         // You sent money to someone
         userPaid += transaction.amount;
-        console.log(`✅ You sent: +${transaction.amount}, Total sent: ${userPaid}`);
+        // console.log(`✅ You sent: +${transaction.amount}, Total sent: ${userPaid}`);
       } else if (isCurrentUserReceived) {
         // You received money from someone
         userReceived += transaction.amount;
-        console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
+        // console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
       } else {
-        console.log(`⚠️ Transaction ${index + 1} doesn't involve current user directly`);
+        // console.log(`⚠️ Transaction ${index + 1} doesn't involve current user directly`);
       }
     });
 
     // Calculate balance: positive means you get money, negative means you owe money
     const balance = userPaid - userReceived;
 
-    console.log('=== DASHBOARD CALCULATION SUMMARY ===');
-    console.log(`You paid: ₹${userPaid}`);
-    console.log(`You received: ₹${userReceived}`);
-    console.log(`Final balance: ₹${userPaid} - ₹${userReceived} = ₹${balance}`);
+    // console.log('=== DASHBOARD CALCULATION SUMMARY ===');
+    // console.log(`You paid: ₹${userPaid}`);
+    // console.log(`You received: ₹${userReceived}`);
+    // console.log(`Final balance: ₹${userPaid} - ₹${userReceived} = ₹${balance}`);
     if (balance > 0) {
-      console.log(`🎯 RESULT: You get ₹${balance} from friend`);
+      // console.log(`🎯 RESULT: You get ₹${balance} from friend`);
     } else if (balance < 0) {
-      console.log(`🎯 RESULT: You need to give ₹${Math.abs(balance)} to friend`);
+      // console.log(`🎯 RESULT: You need to give ₹${Math.abs(balance)} to friend`);
     } else {
-      console.log(`🎯 RESULT: All settled!`);
+      // console.log(`🎯 RESULT: All settled!`);
     }
-    console.log('=== DASHBOARD BALANCE CALCULATION END ===');
+    // console.log('=== DASHBOARD BALANCE CALCULATION END ===');
 
     return balance;
   };
@@ -353,7 +353,7 @@ const Dashboard = () => {
                 return balance > 0 ? sum + balance : sum;
               }, 0)}
             </button>
-            <button className="bg-yellow-950/90 text-red-400   font-bold px-8 py-2 rounded-lg text-sm">
+            <button className="bg-yellow-950/90 text-red-300   font-bold px-8 py-2 rounded-lg text-sm">
               You Give Rs{" "}
               {ledgers.reduce((sum, ledger) => {
                 const balance = ledger.transactions && ledger.transactions.length > 0
@@ -422,17 +422,17 @@ const Dashboard = () => {
           ) : (
             ledgers.map((ledger) => {
               // Debug logging to see what data we're working with
-              console.log('🔍 LEDGER DEBUG:', {
-                ledgerId: ledger.id,
-                friendName: ledger.friend.name,
-                friendMobile: ledger.friend.mobile,
-                serverBalance: ledger.balance,
-                hasTransactions: !!ledger.transactions,
-                transactionsType: typeof ledger.transactions,
-                transactionsLength: ledger.transactions?.length,
-                firstTransaction: ledger.transactions?.[0],
-                allTransactions: ledger.transactions
-              });
+              // console.log('🔍 LEDGER DEBUG:', {
+              //   ledgerId: ledger.id,
+              //   friendName: ledger.friend.name,
+              //   friendMobile: ledger.friend.mobile,
+              //   serverBalance: ledger.balance,
+              //   hasTransactions: !!ledger.transactions,
+              //   transactionsType: typeof ledger.transactions,
+              //   transactionsLength: ledger.transactions?.length,
+              //   firstTransaction: ledger.transactions?.[0],
+              //   allTransactions: ledger.transactions
+              // });
 
               // Calculate the correct balance using the same logic as Ledger page
               // Now we should always have transactions data for accurate calculation
@@ -440,14 +440,14 @@ const Dashboard = () => {
                 ? calculateFrontendBalance(ledger.transactions)
                 : ledger.balance;
 
-              console.log('💰 BALANCE CALCULATION RESULT:', {
-                ledgerId: ledger.id,
-                calculatedBalance,
-                serverBalance: ledger.balance,
-                match: calculatedBalance === ledger.balance,
-                usedServerBalance: !ledger.transactions || ledger.transactions.length === 0,
-                transactionCount: ledger.transactions?.length || 0
-              });
+              // console.log('💰 BALANCE CALCULATION RESULT:', {
+              //   ledgerId: ledger.id,
+              //   calculatedBalance,
+              //   serverBalance: ledger.balance,
+              //   match: calculatedBalance === ledger.balance,
+              //   usedServerBalance: !ledger.transactions || ledger.transactions.length === 0,
+              //   transactionCount: ledger.transactions?.length || 0
+              // });
 
               return (
                 <div

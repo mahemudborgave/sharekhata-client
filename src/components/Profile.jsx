@@ -53,13 +53,13 @@ const Profile = () => {
 
           {/* User Details */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            {/* <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <Mail className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Email</p>
                 <p className="font-medium text-gray-900">{user.email || 'Not provided'}</p>
               </div>
-            </div>
+            </div> */}
 
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <Phone className="h-5 w-5 text-gray-400" />

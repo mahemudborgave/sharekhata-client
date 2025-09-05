@@ -297,7 +297,7 @@ const Ledger = () => {
           month: 'short'
         });
 
-        shareText += `${transactionNumber}. ${typeText} ${transaction.amount}`;
+        shareText += `${transactionNumber}. ${typeText} ₹${transaction.amount}`;
         shareText += ` - ${date}\n`;
         if (transaction.description) {
           shareText += `  ${transaction.description}\n`;

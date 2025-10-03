@@ -1,12 +1,48 @@
-# React + Vite
+# Sharekhata 📒
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sharekhata is a simple expense-sharing app that helps you and your friend manage transactions in real-time.  
+It’s designed for easy tracking of who owes what, with synced entries and exportable reports.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Features
+- **Registration & Login** with mobile number  
+- **Add Friend** using their mobile number  
+- **Real-Time Sync** of all entries/transactions  
+- **Color-Coded Transactions**  
+  - Blue: Your entries  
+  - Yellow: Friend’s entries  
+- **PDF Export** for transaction history and balance summary  
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📱 How It Works
+1. Register with your mobile number.  
+2. Add your friend using their registered mobile number.  
+3. Both can add transactions, which instantly sync.  
+4. Easily distinguish who added which entry with colors.  
+5. Export your history anytime as a PDF.  
+
+---
+
+## 🛠️ Tech Stack
+- Backend: Node+express
+- Database: MongoDB  
+- Frontend: React and Tailwind 
+- PDF Generation: jsPDF
+
+---
+
+## 📦 Installation
+```bash
+# Clone the repository
+git clone https://github.com/mahemudborgave/sharekhata-client.git
+
+# Navigate to project folder
+cd sharekhata
+
+# Install dependencies
+bun install
+
+# Run the app
+bun dev

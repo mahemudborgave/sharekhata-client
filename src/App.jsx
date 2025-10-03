@@ -10,6 +10,7 @@ import Ledger from './components/Ledger';
 import AddFriend from './components/AddFriend';
 import Profile from './components/Profile';
 import './App.css';
+import PersonalExpense from './components/PersonalExpense';
 
 // Route Tracker Component
 const RouteTracker = () => {
@@ -92,6 +93,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/personal-expense" 
+          element={
+            <ProtectedRoute>
+              <PersonalExpense />
             </ProtectedRoute>
           } 
         />

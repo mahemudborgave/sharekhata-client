@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut, NotebookPen, ClipboardList } from 'lucide-react';
+import { User, LogOut, NotebookPen, ClipboardList, Accessibility } from 'lucide-react';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -25,13 +25,13 @@ const Header = () => {
   if (!user) return null;
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-blue-300">
+    <header>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-[#111D6D]">
         <div className="flex justify-between items-center h-20">
           {/* Left side - App name only */}
           <div className="flex items-center space-x-2">
-          <ClipboardList className="h-7 w-7 text-blue-800" />
-            <h1 className="text-xl font-bold text-blue-800 uppercase">Share.Khata</h1>
+          <ClipboardList className="h-7 w-7 text-white" />
+            <h1 className="text-xl font-bold text-white uppercase">Share.Khata</h1>
           </div>
 
           {/* Right side - Profile section */}
@@ -40,11 +40,11 @@ const Header = () => {
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-100/30 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <span className="sm:block text-sm font-medium text-blue-800/70">
+              <span className="sm:block text-sm font-medium text-blue-300/70">
                 {user.name.split(" ")[0]}
               </span>
-              <div className="w-8 h-8 bg-blue-800 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
+              <div className="w-8 h-8 bg-blue-800/50 rounded-lg flex items-center justify-center">
+                <Accessibility className="h-5 w-5 text-white" />
               </div>
             </button>
 

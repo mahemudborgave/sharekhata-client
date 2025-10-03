@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, User, ArrowRight, IndianRupee, Download } from 'lucide-react';
+import { Plus, User, ArrowRight, IndianRupee, Download, EllipsisVertical, X } from 'lucide-react';
 import axios from 'axios';
 import Header from './Header';
 import jsPDF from 'jspdf';
+import { Wallet } from 'lucide-react';
 
 // Get API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -13,6 +14,11 @@ const Dashboard = () => {
   const [ledgers, setLedgers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [personalExpenseSummary, setPersonalExpenseSummary] = useState({
+    today: 0,
+    lastWeek: 0,
+    yesterday: 0
+  });
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -23,42 +29,37 @@ const Dashboard = () => {
 
   const fetchLedgers = async () => {
     try {
-      // console.log('🔄 FETCHING LEDGERS - START');
-      // console.log('📡 API URL:', `${API_BASE_URL}/ledger`);
-      // console.log('👤 Current user:', user);
-
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/ledger`);
 
-      // console.log('📦 LEDGERS RESPONSE:', response.data);
-      // console.log('📊 LEDGERS COUNT:', response.data.ledgers.length);
-      // console.log('📋 LEDGERS DATA:', response.data.ledgers);
+      // Fetch both ledgers and personal expense summary
+      const [ledgersResponse, expenseResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/ledger`),
+        axios.get(`${API_BASE_URL}/personal-expense/summary`).catch(() => ({
+          data: { summary: { today: 0, lastWeek: 0, yesterday: 0 } }
+        }))
+      ]);
 
-      // Fetch full transaction data for each ledger to calculate accurate balances
+      // Fetch full transaction data for each ledger
       const ledgersWithTransactions = await Promise.all(
-        response.data.ledgers.map(async (ledger) => {
+        ledgersResponse.data.ledgers.map(async (ledger) => {
           try {
-            // console.log(`🔄 Fetching transactions for ledger ${ledger.id}`);
             const ledgerResponse = await axios.get(`${API_BASE_URL}/ledger/${ledger.id}`);
-            // console.log(`✅ Ledger ${ledger.id} transactions:`, ledgerResponse.data.ledger.transactions);
             return {
               ...ledger,
               transactions: ledgerResponse.data.ledger.transactions
             };
           } catch (error) {
-            console.error(`❌ Failed to fetch transactions for ledger ${ledger.id}:`, error);
-            return ledger; // Return original ledger if transaction fetch fails
+            console.error(`Failed to fetch transactions for ledger ${ledger.id}:`, error);
+            return ledger;
           }
         })
       );
 
-      // console.log('📦 LEDGERS WITH TRANSACTIONS:', ledgersWithTransactions);
       setLedgers(ledgersWithTransactions);
-      // console.log('✅ FETCHING LEDGERS - COMPLETE');
+      setPersonalExpenseSummary(expenseResponse.data.summary);
     } catch (error) {
-      console.error('❌ FETCHING LEDGERS - ERROR:', error);
-      console.error('❌ Error response:', error.response?.data);
-      setError('Failed to load ledgers');
+      console.error('Error fetching data:', error);
+      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -296,6 +297,27 @@ const Dashboard = () => {
     }
   };
 
+  // three dot dropdown things
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -308,97 +330,149 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      <Header />
-      {/* Header */}
-      {/* <div className="bg-blue-400 shadow-sm">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-blue-100">
+
+      <div className='bg-[#111D6D] pb-8 rounded-b-3xl'>
+        <Header />
+        {/* Personal Expense Card */}
+        <div
+          onClick={() => navigate('/personal-expense')}
+          className="bg-gradient-to-br from-blue-300 to-blue-600 text-white p-5 m-5 my-0 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-all"
+        >
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-3">
-              {getAvatar(user)}
+              <div className="bg-white/20 rounded-lg p-2">
+                <Wallet className="h-6 w-6" />
+              </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">Hello, {user.name}</h1>
-                <p className="text-sm text-white">{user.mobile}</p>
+                <h3 className="font-semibold text-lg">Personal Expenses</h3>
+                <p className="text-purple-100 text-xs">Track your spending</p>
               </div>
             </div>
+            <ArrowRight className="h-5 w-5" />
+          </div>
 
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Today</p>
+              <p className="text-base font-bold">₹{personalExpenseSummary.today}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Yesterday</p>
+              <p className="text-base font-bold">₹{personalExpenseSummary.yesterday}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Week</p>
+              <p className="text-base font-bold">₹{personalExpenseSummary.lastWeek}</p>
+            </div>
           </div>
         </div>
-      </div> */}
+      </div>
 
       {/* Content */}
       <div className="max-w-md mx-auto px-4 py-6">
-        <div className="bg-yellow-900 text-white p-6 rounded-2xl flex items-center justify-between w-full mb-4">
-          {/* Left Section */}
-          <div>
-            <p className="text-gray-100/50 text-sm">Net Balance</p>
-            <h1 className="text-4xl font-bold flex items-center justify-center">
-              <IndianRupee /> {(ledgers.reduce((acc, ledger) => {
-                const balance = ledger.transactions && ledger.transactions.length > 0
-                  ? calculateFrontendBalance(ledger.transactions)
-                  : ledger.balance;
-                return acc + balance;
-              }, 0))}
-            </h1>
-          </div>
-
-          {/* Right Section */}
-          <div className="flex flex-col space-y-1">
-            <button className="bg-yellow-950/90 text-green-400 font-bold px-8 py-2 rounded-lg text-sm">
-              You Get Rs{" "}
-              {ledgers.reduce((sum, ledger) => {
-                const balance = ledger.transactions && ledger.transactions.length > 0
-                  ? calculateFrontendBalance(ledger.transactions)
-                  : ledger.balance;
-                return balance > 0 ? sum + balance : sum;
-              }, 0)}
-            </button>
-            <button className="bg-yellow-950/90 text-red-300   font-bold px-8 py-2 rounded-lg text-sm">
-              You Give Rs{" "}
-              {ledgers.reduce((sum, ledger) => {
-                const balance = ledger.transactions && ledger.transactions.length > 0
-                  ? calculateFrontendBalance(ledger.transactions)
-                  : ledger.balance;
-                return balance < 0 ? sum + Math.abs(balance) : sum;
-              }, 0)}
-            </button>
-          </div>
-        </div>
-
-        <div className='text-center mb-4'>
-          <span className='underline-0'>💡</span>
-          <a
-            href="https://drive.google.com/file/d/1k9SQoKd1uR6iWtdJlgjM7p0bYJgmbLL0/view?usp=sharing"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-center text-yellow-700 text-base underline"
-          >
-            See how to use Sharekhata
-          </a> 
-        </div>
-
         {/* Add Friend Button */}
-        <button
+        {/* <button
           onClick={() => navigate('/add-friend')}
           className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors mb-6 flex items-center justify-center space-x-2"
         >
           <Plus className="h-5 w-5" />
           <span>Add Friend</span>
-        </button>
+        </button> */}
 
         {/* Friends & Ledgers */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-semibold text-gray-900">Your Friends</h2>
-            <button
+            {/* <button
               onClick={() => generateAllFriendsPDF(ledgers)}
               disabled={ledgers.length === 0}
               className="flex items-center space-x-2 text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Export all friends summary as PDF"
             >
               <Download className="h-4 w-4" />
+              
               <span className="text-sm font-medium">Export PDF</span>
-            </button>
+            </button> */}
+
+            <div className='flex items-center'>
+              <button
+                onClick={() => navigate('/add-friend')}
+                className="text-blue-600 mr-2 py-1 px-5 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-2"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Add Friend</span>
+              </button>
+
+              <div>
+                <div className="relative">
+                  <button
+                    onClick={() => setDropdownOpen((prev) => !prev)}
+                    className="rounded-sm w-7 h-7 p-1 flex items-center justify-center"
+                  >
+                    {dropdownOpen ? (
+                      <X className="w-5 h-5 text-blue-500" />
+                    ) : (
+                      <EllipsisVertical className="w-5 h-5 text-blue-500" />
+                    )}
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {dropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={() => generateAllFriendsPDF(ledgers)}
+                        disabled={ledgers.length === 0}
+                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Export PDF
+                      </button>
+                      {/* Add more items here if needed */}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+
+          <div className="bg-gradient-to-br from-blue-400 to-blue-200 text-white p-6 rounded-2xl flex items-center justify-between w-full mb-4">
+            {/* Left Section */}
+            <div>
+              <p className="text-gray-100/60 text-sm">Net Balance</p>
+              <h1 className="text-4xl font-bold flex items-center justify-center">
+                <IndianRupee /> {(ledgers.reduce((acc, ledger) => {
+                  const balance = ledger.transactions && ledger.transactions.length > 0
+                    ? calculateFrontendBalance(ledger.transactions)
+                    : ledger.balance;
+                  return acc + balance;
+                }, 0))}
+              </h1>
+            </div>
+
+            {/* Right Section */}
+            <div className="flex flex-col space-y-1">
+              <button className="bg-white/40 text-green-600 font-bold px-8 py-2 rounded-lg text-sm">
+                You Get Rs{" "}
+                {ledgers.reduce((sum, ledger) => {
+                  const balance = ledger.transactions && ledger.transactions.length > 0
+                    ? calculateFrontendBalance(ledger.transactions)
+                    : ledger.balance;
+                  return balance > 0 ? sum + balance : sum;
+                }, 0)}
+              </button>
+              <button className="bg-white/40 text-red-500   font-bold px-8 py-2 rounded-lg text-sm">
+                You Give Rs{" "}
+                {ledgers.reduce((sum, ledger) => {
+                  const balance = ledger.transactions && ledger.transactions.length > 0
+                    ? calculateFrontendBalance(ledger.transactions)
+                    : ledger.balance;
+                  return balance < 0 ? sum + Math.abs(balance) : sum;
+                }, 0)}
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -490,6 +564,17 @@ const Dashboard = () => {
           <p className="text-gray-400 text-sm">
             ShareKhata - Split expenses with friends easily
           </p>
+          <div className='text-center mb-2'>
+            <span className='underline-0'>💡</span>
+            <a
+              href="https://drive.google.com/file/d/1k9SQoKd1uR6iWtdJlgjM7p0bYJgmbLL0/view?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-center text-yellow-700 text-base underline"
+            >
+              See how to use Sharekhata
+            </a>
+          </div>
           <a
             href="https://forms.gle/mWg7EUnTzexXm8Kp6"
             target="_blank"

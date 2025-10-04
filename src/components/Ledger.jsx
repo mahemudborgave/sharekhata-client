@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download, Copy, M
 import axios from 'axios';
 import io from 'socket.io-client';
 import jsPDF from 'jspdf';
+import toast from 'react-hot-toast';
 
 // Get API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -97,10 +98,11 @@ const Ledger = () => {
       setLedger(response.data.ledger);
       // console.log('✅ FETCHING LEDGER - COMPLETE');
     } catch (error) {
-      console.error('❌ FETCHING LEDGER - ERROR:', error);
-      console.error('❌ Error response:', error.response?.data);
-      setError('Failed to load ledger');
-    } finally {
+  console.error('❌ FETCHING LEDGER - ERROR:', error);
+  console.error('❌ Error response:', error.response?.data);
+  toast.error('Failed to load ledger');
+  setError('Failed to load ledger');
+} finally {
       setLoading(false);
     }
   };
@@ -138,58 +140,62 @@ const Ledger = () => {
   };
 
   const handleTransactionSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!amount || amount <= 0) {
-      return;
+  if (!amount || amount <= 0) {
+    toast.error('Please enter a valid amount');
+    return;
+  }
+
+  setSubmitting(true);
+
+  try {
+    if (isEditMode && editingTransaction) {
+      // Update existing transaction
+      const requestData = {
+        amount: parseFloat(amount),
+        description: description.trim()
+      };
+
+      await axios.put(
+        `${API_BASE_URL}/ledger/${ledgerId}/transaction/${editingTransaction.id}`,
+        requestData
+      );
+      toast.success('Transaction updated successfully');
+    } else {
+      // Add new transaction
+      const endpoint = transactionType === 'added' ? 'add' : 'receive';
+      const requestData = {
+        amount: parseFloat(amount),
+        description: description.trim()
+      };
+
+      await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
+      toast.success('Transaction added successfully');
     }
 
-    setSubmitting(true);
-
-    try {
-      if (isEditMode && editingTransaction) {
-        // Update existing transaction
-        const requestData = {
-          amount: parseFloat(amount),
-          description: description.trim()
-        };
-
-        await axios.put(
-          `${API_BASE_URL}/ledger/${ledgerId}/transaction/${editingTransaction.id}`,
-          requestData
-        );
-      } else {
-        // Add new transaction
-        const endpoint = transactionType === 'added' ? 'add' : 'receive';
-        const requestData = {
-          amount: parseFloat(amount),
-          description: description.trim()
-        };
-
-        await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
-      }
-
-      closeTransactionModal();
-    } catch (error) {
-      console.error('Transaction error:', error);
-      setError(isEditMode ? 'Failed to update transaction' : 'Failed to add transaction');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    closeTransactionModal();
+  } catch (error) {
+    console.error('Transaction error:', error);
+    toast.error(isEditMode ? 'Failed to update transaction' : 'Failed to add transaction');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const handleDeleteTransaction = async (transactionId) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) {
-      return;
-    }
+  if (!window.confirm('Are you sure you want to delete this transaction?')) {
+    return;
+  }
 
-    try {
-      await axios.delete(`${API_BASE_URL}/ledger/${ledgerId}/transaction/${transactionId}`);
-    } catch (error) {
-      console.error('Delete transaction error:', error);
-      setError('Failed to delete transaction');
-    }
-  };
+  try {
+    await axios.delete(`${API_BASE_URL}/ledger/${ledgerId}/transaction/${transactionId}`);
+    toast.success('Transaction deleted successfully');
+  } catch (error) {
+    console.error('Delete transaction error:', error);
+    toast.error('Failed to delete transaction');
+  }
+};
 
   const formatBalance = (balance) => {
     // console.log('Formatting balance:', balance);

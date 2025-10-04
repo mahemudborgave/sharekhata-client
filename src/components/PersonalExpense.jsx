@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from './Header';
 import { Plus, X, Edit2, Trash2, TrendingDown, Calendar } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -52,12 +53,13 @@ const PersonalExpense = () => {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
-      
+
       setSummary(summaryRes.data.summary);
       setTransactions(transactionsRes.data.transactions);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Failed to load expenses');
       setLoading(false);
     }
   };
@@ -69,7 +71,8 @@ const PersonalExpense = () => {
       await axios.post(`${API_URL}/personal-expense/add`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
+      toast.success('Expense added successfully');
       setShowAddModal(false);
       setFormData({
         amount: '',
@@ -81,7 +84,7 @@ const PersonalExpense = () => {
       fetchData();
     } catch (error) {
       console.error('Error adding transaction:', error);
-      alert('Failed to add transaction');
+      toast.error('Failed to add expense');
     }
   };
 
@@ -104,7 +107,8 @@ const PersonalExpense = () => {
       await axios.put(`${API_URL}/personal-expense/${editingTransaction._id}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
+      toast.success('Expense updated successfully');
       setShowEditModal(false);
       setEditingTransaction(null);
       setFormData({
@@ -117,22 +121,23 @@ const PersonalExpense = () => {
       fetchData();
     } catch (error) {
       console.error('Error updating transaction:', error);
-      alert('Failed to update transaction');
+      toast.error('Failed to update expense');
     }
   };
 
   const handleDeleteTransaction = async (id) => {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${API_URL}/personal-expense/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      toast.success('Expense deleted successfully');
       fetchData();
     } catch (error) {
       console.error('Error deleting transaction:', error);
-      alert('Failed to delete transaction');
+      toast.error('Failed to delete expense');
     }
   };
 
@@ -149,7 +154,7 @@ const PersonalExpense = () => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     if (date.toDateString() === today.toDateString()) {
       return 'Today';
     } else if (date.toDateString() === yesterday.toDateString()) {
@@ -187,7 +192,7 @@ const PersonalExpense = () => {
   return (
     <div className="min-h-screen bg-gray-100 pb-20 w-full">
       <Header />
-      
+
       {/* Header */}
       <div className="bg-blue-900 text-white p-6 pt-3 rounded-b-2xl">
         <h1 className="text-2xl font-bold mb-1">Personal Expenses</h1>
@@ -340,11 +345,10 @@ const PersonalExpense = () => {
                       key={cat.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, category: cat.value })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        formData.category === cat.value
+                      className={`p-3 rounded-lg border-2 transition-all ${formData.category === cat.value
                           ? 'border-blue-600 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="text-2xl mb-1">{cat.label.split(' ')[0]}</div>
                       <div className="text-xs font-medium">{cat.label.split(' ')[1]}</div>
@@ -431,11 +435,10 @@ const PersonalExpense = () => {
                       key={cat.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, category: cat.value })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        formData.category === cat.value
+                      className={`p-3 rounded-lg border-2 transition-all ${formData.category === cat.value
                           ? 'border-blue-600 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="text-2xl mb-1">{cat.label.split(' ')[0]}</div>
                       <div className="text-xs font-medium">{cat.label.split(' ')[1]}</div>

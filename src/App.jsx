@@ -11,6 +11,7 @@ import AddFriend from './components/AddFriend';
 import Profile from './components/Profile';
 import './App.css';
 import PersonalExpense from './components/PersonalExpense';
+import { Toaster } from 'react-hot-toast';
 
 // Route Tracker Component
 const RouteTracker = () => {
@@ -54,6 +55,30 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster 
+  position="top-center"
+  toastOptions={{
+    duration: 3000,
+    style: {
+      background: '#363636',
+      color: '#fff',
+    },
+    success: {
+      duration: 2000,
+      iconTheme: {
+        primary: '#10b981',
+        secondary: '#fff',
+      },
+    },
+    error: {
+      duration: 3000,
+      iconTheme: {
+        primary: '#ef4444',
+        secondary: '#fff',
+      },
+    },
+  }}
+/>
       <RouteTracker />
       <Routes>
         <Route 

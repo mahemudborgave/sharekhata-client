@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { User, LogOut, NotebookPen, ClipboardList, Accessibility } from 'lucide-react';
 
@@ -29,10 +29,10 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-[#111D6D]">
         <div className="flex justify-between items-center h-20">
           {/* Left side - App name only */}
-          <div className="flex items-center space-x-2">
-          <ClipboardList className="h-7 w-7 text-white" />
+          <Link to="/dashboard" className="flex items-center space-x-2 cursor-pointer">
+            <ClipboardList className="h-7 w-7 text-white" />
             <h1 className="text-xl font-bold text-white uppercase">Share.Khata</h1>
-          </div>
+          </Link>
 
           {/* Right side - Profile section */}
           <div className="relative">
@@ -73,8 +73,8 @@ const Header = () => {
 
       {/* Click outside to close menu */}
       {showProfileMenu && (
-        <div 
-          className="fixed inset-0 z-40" 
+        <div
+          className="fixed inset-0 z-40"
           onClick={() => setShowProfileMenu(false)}
         />
       )}

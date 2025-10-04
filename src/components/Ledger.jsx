@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download, Copy, MessageSquare, Share2, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download, Copy, MessageSquare, Share2, Check, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import jsPDF from 'jspdf';
@@ -20,6 +20,8 @@ const Ledger = () => {
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareSection, setShowShareSection] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const { user } = useAuth();
   const { id: ledgerId } = useParams();
@@ -107,10 +109,22 @@ const Ledger = () => {
     navigate('/dashboard');
   };
 
-  const openTransactionModal = (type) => {
-    setTransactionType(type);
-    setAmount('');
-    setDescription('');
+  const openTransactionModal = (type, transaction = null) => {
+    if (transaction) {
+      // Edit mode
+      setIsEditMode(true);
+      setEditingTransaction(transaction);
+      setTransactionType(transaction.type);
+      setAmount(transaction.amount.toString());
+      setDescription(transaction.description || '');
+    } else {
+      // Add mode
+      setIsEditMode(false);
+      setEditingTransaction(null);
+      setTransactionType(type);
+      setAmount('');
+      setDescription('');
+    }
     setShowAmountModal(true);
   };
 
@@ -119,46 +133,61 @@ const Ledger = () => {
     setTransactionType('');
     setAmount('');
     setDescription('');
+    setIsEditMode(false);
+    setEditingTransaction(null);
   };
 
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
 
-    console.log('🔄 SUBMITTING TRANSACTION - START');
-    console.log('📝 Transaction type:', transactionType);
-    console.log('💰 Amount:', amount);
-    console.log('📄 Description:', description);
-
     if (!amount || amount <= 0) {
-      console.log('❌ Invalid amount:', amount);
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const endpoint = transactionType === 'added' ? 'add' : 'receive';
-      const requestData = {
-        amount: parseFloat(amount),
-        description: description.trim()
-      };
+      if (isEditMode && editingTransaction) {
+        // Update existing transaction
+        const requestData = {
+          amount: parseFloat(amount),
+          description: description.trim()
+        };
 
-      // console.log('📡 API URL:', `${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`);
-      // console.log('📦 Request data:', requestData);
+        await axios.put(
+          `${API_BASE_URL}/ledger/${ledgerId}/transaction/${editingTransaction.id}`,
+          requestData
+        );
+      } else {
+        // Add new transaction
+        const endpoint = transactionType === 'added' ? 'add' : 'receive';
+        const requestData = {
+          amount: parseFloat(amount),
+          description: description.trim()
+        };
 
-      const response = await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
-
-      // console.log('✅ TRANSACTION RESPONSE:', response.data);
-      // console.log('💰 NEW BALANCE:', response.data.balance);
+        await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
+      }
 
       closeTransactionModal();
-      // console.log('✅ SUBMITTING TRANSACTION - COMPLETE');
     } catch (error) {
-      console.error('❌ SUBMITTING TRANSACTION - ERROR:', error);
-      console.error('❌ Error response:', error.response?.data);
-      setError('Failed to add transaction');
+      console.error('Transaction error:', error);
+      setError(isEditMode ? 'Failed to update transaction' : 'Failed to add transaction');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_BASE_URL}/ledger/${ledgerId}/transaction/${transactionId}`);
+    } catch (error) {
+      console.error('Delete transaction error:', error);
+      setError('Failed to delete transaction');
     }
   };
 
@@ -832,42 +861,28 @@ const Ledger = () => {
             </div>
           ) : (
             <div className="space-y-3">
+
               {ledger.transactions.map((transaction, index) => {
-                // Calculate transaction number (reverse index so newest is #1)
                 const transactionNumber = ledger.transactions.length - index;
-                // Determine transaction ownership and flow
                 const isCurrentUserSent = transaction.sentBy === user.mobile;
                 const isCurrentUserReceived = transaction.receivedBy === user.mobile;
                 const isCurrentUserInvolved = isCurrentUserSent || isCurrentUserReceived;
-
-                // Determine if this is money received (green) or sent (red)
                 const isMoneyReceived = isCurrentUserReceived;
                 const isMoneySent = isCurrentUserSent;
 
-                // Debug logging
-                // console.log('🔍 Transaction color debug:', {
-                //   transactionId: transaction.id,
-                //   userMobile: user.mobile,
-                //   transactionSentBy: transaction.sentBy,
-                //   transactionReceivedBy: transaction.receivedBy,
-                //   isCurrentUserSent,
-                //   isCurrentUserReceived,
-                //   isCurrentUserInvolved,
-                //   willBeBlue: isCurrentUserInvolved,
-                //   willBeYellow: !isCurrentUserInvolved
-                // });
+                // Check if current user can edit/delete (only if they added the transaction)
+                const canEditDelete = transaction.addedBy.id === user?.id;
 
                 return (
                   <div
                     key={transaction.id}
                     className={`p-4 rounded-lg border ${transaction.addedBy.id === user?.id
-                      ? 'bg-blue-50 border-blue-200' // Blue for transactions performed by logged user
-                      : 'bg-yellow-50 border-yellow-200' // Yellow for transactions performed by friend
+                      ? 'bg-blue-50 border-blue-200'
+                      : 'bg-yellow-50 border-yellow-200'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center space-x-2">
-                        {/* Transaction Number */}
                         <div className="w-6 h-6 rounded-full bg-gray-500 text-white flex items-center justify-center text-xs font-semibold">
                           {transactionNumber}
                         </div>
@@ -879,22 +894,24 @@ const Ledger = () => {
                           }
                         </span>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMoneyReceived
-                          ? 'bg-green-100 text-green-600' // Green for received money
-                          : 'bg-red-100 text-red-600'     // Red for sent money
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-red-100 text-red-600'
                           }`}>
                           {isMoneyReceived ? (
-                            <Plus className="h-4 w-4" />  // + for received
+                            <Plus className="h-4 w-4" />
                           ) : (
-                            <Minus className="h-4 w-4" /> // - for sent
+                            <Minus className="h-4 w-4" />
                           )}
                         </div>
                       </div>
-                      <span className={`font-semibold flex items-center justify-between ${isMoneyReceived
-                        ? ' text-green-600' // Green for received money
-                        : ' text-red-600'     // Red for sent money
-                        }`}>
-                        <IndianRupee size={15} className='text-gray-500' /> {transaction.amount}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`font-semibold flex items-center justify-between ${isMoneyReceived
+                          ? ' text-green-600'
+                          : ' text-red-600'
+                          }`}>
+                          <IndianRupee size={15} className='text-gray-500' /> {transaction.amount}
+                        </span>
+                      </div>
                     </div>
 
                     {transaction.description && (
@@ -910,6 +927,25 @@ const Ledger = () => {
                         <Clock className="h-3 w-3" />
                         <span>{formatTime(transaction.timestamp)}</span>
                       </div>
+                      {/* Edit and Delete buttons - only show if user added this transaction */}
+                        {canEditDelete && (
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => openTransactionModal(transaction.type, transaction)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                              title="Edit transaction"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTransaction(transaction.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
+                              title="Delete transaction"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
                     </div>
                   </div>
                 );
@@ -924,7 +960,10 @@ const Ledger = () => {
         <div className="fixed inset-0 bg-black/70 bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {transactionType === 'added' ? 'I Paid' : 'I Received'}
+              {isEditMode
+                ? `Edit Transaction`
+                : (transactionType === 'added' ? 'I Paid' : 'I Received')
+              }
             </h3>
 
             <form onSubmit={handleTransactionSubmit} className="space-y-4">
@@ -973,7 +1012,10 @@ const Ledger = () => {
                   disabled={submitting || !amount || amount <= 0}
                   className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? 'Adding...' : 'Add Transaction'}
+                  {submitting
+                    ? (isEditMode ? 'Updating...' : 'Adding...')
+                    : (isEditMode ? 'Update Transaction' : 'Add Transaction')
+                  }
                 </button>
               </div>
             </form>

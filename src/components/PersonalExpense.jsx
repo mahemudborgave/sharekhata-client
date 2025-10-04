@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Header from './Header';
 import { Plus, X, Edit2, Trash2, TrendingDown, Calendar } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -9,7 +10,7 @@ const categories = [
   { value: 'transport', label: '🚗 Transport', color: 'bg-blue-100 text-blue-800' },
   { value: 'shopping', label: '🛍️ Shopping', color: 'bg-pink-100 text-pink-800' },
   { value: 'bills', label: '💡 Bills', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'entertainment', label: '🎬 Entertainment', color: 'bg-purple-100 text-purple-800' },
+  { value: 'entertainment', label: '🎬 Fun', color: 'bg-purple-100 text-purple-800' },
   { value: 'health', label: '🏥 Health', color: 'bg-red-100 text-red-800' },
   { value: 'education', label: '📚 Education', color: 'bg-green-100 text-green-800' },
   { value: 'other', label: '📦 Other', color: 'bg-gray-100 text-gray-800' }
@@ -22,8 +23,11 @@ const PersonalExpense = () => {
     lastWeek: 0,
     lastMonth: 0
   });
+
   const [transactions, setTransactions] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     amount: '',
@@ -81,6 +85,42 @@ const PersonalExpense = () => {
     }
   };
 
+  const handleEditClick = (transaction) => {
+    setEditingTransaction(transaction);
+    setFormData({
+      amount: transaction.amount.toString(),
+      description: transaction.description,
+      category: transaction.category,
+      transactionType: transaction.transactionType || 'expense',
+      date: new Date(transaction.date).toISOString().split('T')[0]
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateTransaction = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/personal-expense/${editingTransaction._id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setShowEditModal(false);
+      setEditingTransaction(null);
+      setFormData({
+        amount: '',
+        description: '',
+        category: 'other',
+        transactionType: 'expense',
+        date: new Date().toISOString().split('T')[0]
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      alert('Failed to update transaction');
+    }
+  };
+
   const handleDeleteTransaction = async (id) => {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
     
@@ -123,6 +163,19 @@ const PersonalExpense = () => {
     return categories.find(c => c.value === category) || categories[categories.length - 1];
   };
 
+  const closeModal = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setEditingTransaction(null);
+    setFormData({
+      amount: '',
+      description: '',
+      category: 'other',
+      transactionType: 'expense',
+      date: new Date().toISOString().split('T')[0]
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -132,9 +185,11 @@ const PersonalExpense = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100 pb-20 w-full">
+      <Header />
+      
       {/* Header */}
-      <div className="bg-[#111D6D] text-white p-6 rounded-b-2xl">
+      <div className="bg-blue-900 text-white p-6 pt-3 rounded-b-2xl">
         <h1 className="text-2xl font-bold mb-1">Personal Expenses</h1>
         <p className="text-blue-100 text-sm">Track your spending habits</p>
       </div>
@@ -197,12 +252,18 @@ const PersonalExpense = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
                     <div className="text-right">
                       <p className="font-bold text-red-600">
                         {formatCurrency(transaction.amount)}
                       </p>
                     </div>
+                    <button
+                      onClick={() => handleEditClick(transaction)}
+                      className="text-gray-400 hover:text-blue-600 p-2"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleDeleteTransaction(transaction._id)}
                       className="text-gray-400 hover:text-red-600 p-2"
@@ -227,19 +288,19 @@ const PersonalExpense = () => {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/70 bg-opacity-50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 bg-opacity-50 flex items-end sm:items-center justify-center z-50 w-full">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-sm sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Add Expense</h2>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleAddTransaction} className="space-y-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Amount (₹)
@@ -273,7 +334,7 @@ const PersonalExpense = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {categories.map((cat) => (
                     <button
                       key={cat.value}
@@ -306,12 +367,103 @@ const PersonalExpense = () => {
               </div>
 
               <button
-                type="submit"
+                onClick={handleAddTransaction}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
               >
                 Add Expense
               </button>
-            </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/70 bg-opacity-50 flex items-end sm:items-center justify-center z-50 w-full">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl w-sm sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Edit Expense</h2>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="What did you spend on?"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, category: cat.value })}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        formData.category === cat.value
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{cat.label.split(' ')[0]}</div>
+                      <div className="text-xs font-medium">{cat.label.split(' ')[1]}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <button
+                onClick={handleUpdateTransaction}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
+              >
+                Update Expense
+              </button>
+            </div>
           </div>
         </div>
       )}

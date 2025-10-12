@@ -12,6 +12,7 @@ import Profile from './components/Profile';
 import './App.css';
 import PersonalExpense from './components/PersonalExpense';
 import { Toaster } from 'react-hot-toast';
+import { LedgerProvider } from './contexts/LedgerContext';
 
 // Route Tracker Component
 const RouteTracker = () => {
@@ -29,7 +30,7 @@ const RouteTracker = () => {
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;
-  
+
   return (
     <>
       {children}
@@ -55,83 +56,83 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Toaster 
-  position="top-center"
-  toastOptions={{
-    duration: 3000,
-    style: {
-      background: '#363636',
-      color: '#fff',
-    },
-    success: {
-      duration: 2000,
-      iconTheme: {
-        primary: '#10b981',
-        secondary: '#fff',
-      },
-    },
-    error: {
-      duration: 3000,
-      iconTheme: {
-        primary: '#ef4444',
-        secondary: '#fff',
-      },
-    },
-  }}
-/>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 2000,
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <RouteTracker />
       <Routes>
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Login />} 
+        <Route
+          path="/login"
+          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Login />}
         />
-        <Route 
-          path="/register" 
-          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Register />} 
+        <Route
+          path="/register"
+          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Register />}
         />
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/ledger/:id" 
+        <Route
+          path="/ledger/:id"
           element={
             <ProtectedRoute>
               <Ledger />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/add-friend" 
+        <Route
+          path="/add-friend"
           element={
             <ProtectedRoute>
               <AddFriend />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/profile" 
+        <Route
+          path="/profile"
           element={
             <ProtectedRoute>
               <Profile />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/personal-expense" 
+        <Route
+          path="/personal-expense"
           element={
             <ProtectedRoute>
               <PersonalExpense />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/" 
-          element={<Navigate to={user ? (lastRoute || "/dashboard") : "/login"} />} 
+        <Route
+          path="/"
+          element={<Navigate to={user ? (lastRoute || "/dashboard") : "/login"} />}
         />
       </Routes>
     </div>
@@ -143,7 +144,9 @@ const App = () => {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <LedgerProvider>
+          <AppContent />
+        </LedgerProvider>
       </AuthProvider>
     </Router>
   );

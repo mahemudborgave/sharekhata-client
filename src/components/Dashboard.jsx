@@ -1,142 +1,66 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLedger } from '../contexts/LedgerContext'; // Import the context
 import { Plus, User, ArrowRight, IndianRupee, Download, EllipsisVertical, X } from 'lucide-react';
-import axios from 'axios';
 import Header from './Header';
 import jsPDF from 'jspdf';
 import { Wallet } from 'lucide-react';
 
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
 const Dashboard = () => {
-  const [ledgers, setLedgers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [personalExpenseSummary, setPersonalExpenseSummary] = useState({
-    today: 0,
-    lastWeek: 0,
-    yesterday: 0
-  });
-
+  // Use context instead of local state
+  const { ledgers, personalExpenseSummary, loading, error, fetchLedgers } = useLedger();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
   useEffect(() => {
+    // Fetch ledgers, but it will use cache if available
     fetchLedgers();
+  }, [fetchLedgers]);
+
+  // Add refresh indicator for background updates
+  const isRefreshing = loading && ledgers.length > 0;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  const fetchLedgers = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch both ledgers and personal expense summary
-      const [ledgersResponse, expenseResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/ledger`),
-        axios.get(`${API_BASE_URL}/personal-expense/summary`).catch(() => ({
-          data: { summary: { today: 0, lastWeek: 0, yesterday: 0 } }
-        }))
-      ]);
-
-      // Fetch full transaction data for each ledger
-      const ledgersWithTransactions = await Promise.all(
-        ledgersResponse.data.ledgers.map(async (ledger) => {
-          try {
-            const ledgerResponse = await axios.get(`${API_BASE_URL}/ledger/${ledger.id}`);
-            return {
-              ...ledger,
-              transactions: ledgerResponse.data.ledger.transactions
-            };
-          } catch (error) {
-            console.error(`Failed to fetch transactions for ledger ${ledger.id}:`, error);
-            return ledger;
-          }
-        })
-      );
-
-      setLedgers(ledgersWithTransactions);
-      setPersonalExpenseSummary(expenseResponse.data.summary);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Calculate balance based on frontend transaction data (same logic as Ledger.jsx)
+  // Calculate balance based on frontend transaction data
   const calculateFrontendBalance = (transactions) => {
-    // Safety check: if transactions is undefined or null, return 0
     if (!transactions || !Array.isArray(transactions)) {
-      // console.log('⚠️ No transactions array found, returning 0 balance');
-      // console.log('⚠️ Transactions value:', transactions);
-      // console.log('⚠️ Transactions type:', typeof transactions);
       return 0;
     }
 
     let userPaid = 0;
     let userReceived = 0;
 
-    // console.log('=== DASHBOARD BALANCE CALCULATION START ===');
-    // console.log('Total transactions:', transactions.length);
-    // console.log('🔍 Current user data:', user);
-    // console.log('🔍 User mobile:', user?.mobile);
-    // console.log('🔍 All transactions data:', transactions);
-
-    transactions.forEach((transaction, index) => {
-      // console.log(`🔍 Processing transaction ${index + 1}:`, transaction);
-
-      // Check if this transaction involves the current user using mobile numbers
+    transactions.forEach((transaction) => {
       const currentUserMobile = user?.mobile;
       const isCurrentUserSent = transaction.sentBy === currentUserMobile;
       const isCurrentUserReceived = transaction.receivedBy === currentUserMobile;
 
-      // console.log(`🔍 Transaction ${index + 1} analysis:`, {
-      //   transactionId: transaction.id,
-      //   amount: transaction.amount,
-      //   sentBy: transaction.sentBy,
-      //   receivedBy: transaction.receivedBy,
-      //   currentUserMobile,
-      //   isCurrentUserSent,
-      //   isCurrentUserReceived,
-      //   sentByMatch: transaction.sentBy === currentUserMobile,
-      //   receivedByMatch: transaction.receivedBy === currentUserMobile
-      // });
-
       if (isCurrentUserSent) {
-        // You sent money to someone
         userPaid += transaction.amount;
-        // console.log(`✅ You sent: +${transaction.amount}, Total sent: ${userPaid}`);
       } else if (isCurrentUserReceived) {
-        // You received money from someone
         userReceived += transaction.amount;
-        // console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
-      } else {
-        // console.log(`⚠️ Transaction ${index + 1} doesn't involve current user directly`);
       }
     });
 
-    // Calculate balance: positive means you get money, negative means you owe money
-    const balance = userPaid - userReceived;
-
-    // console.log('=== DASHBOARD CALCULATION SUMMARY ===');
-    // console.log(`You paid: ₹${userPaid}`);
-    // console.log(`You received: ₹${userReceived}`);
-    // console.log(`Final balance: ₹${userPaid} - ₹${userReceived} = ₹${balance}`);
-    if (balance > 0) {
-      // console.log(`🎯 RESULT: You get ₹${balance} from friend`);
-    } else if (balance < 0) {
-      // console.log(`🎯 RESULT: You need to give ₹${Math.abs(balance)} to friend`);
-    } else {
-      // console.log(`🎯 RESULT: All settled!`);
-    }
-    // console.log('=== DASHBOARD BALANCE CALCULATION END ===');
-
-    return balance;
+    return userPaid - userReceived;
   };
-
-
 
   const formatBalance = (balance) => {
     if (balance === 0) return 'All settled';
@@ -168,7 +92,6 @@ const Dashboard = () => {
     );
   };
 
-  // Generate PDF export of all friends summary
   const generateAllFriendsPDF = (ledgers) => {
     if (!ledgers || ledgers.length === 0) {
       alert('No friends data to export');
@@ -178,19 +101,16 @@ const Dashboard = () => {
     try {
       const doc = new jsPDF('p', 'mm', 'a4');
 
-      // Add header
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
       doc.text('ShareKhata - Friends Summary Report', 105, 15, { align: 'center' });
 
-      // Add user details
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Your Name: ${user.name}`, 20, 25);
       doc.text(`Your Mobile: ${user.mobile}`, 20, 31);
       doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN')}`, 20, 37);
 
-      // Add summary section
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Friends Summary', 20, 50);
@@ -198,7 +118,6 @@ const Dashboard = () => {
       let yPosition = 60;
       const lineHeight = 8;
 
-      // Table header
       doc.setFillColor(59, 130, 246);
       doc.rect(20, yPosition - 4, 170, 6, 'F');
       doc.setTextColor(255, 255, 255);
@@ -215,7 +134,6 @@ const Dashboard = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
 
-      // Add each friend's data
       ledgers.forEach((ledger, index) => {
         if (yPosition > 270) {
           doc.addPage();
@@ -253,7 +171,6 @@ const Dashboard = () => {
         }
       });
 
-      // Add totals
       yPosition += 10;
       doc.setFont('helvetica', 'bold');
       doc.text('Summary Totals:', 20, yPosition);
@@ -280,13 +197,11 @@ const Dashboard = () => {
       yPosition += 6;
       doc.text(`Net balance: Rs ${(totalToGet - totalToGive).toFixed(2)}`, 25, yPosition);
 
-      // Add footer
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(7);
       doc.setFont('helvetica', 'italic');
       doc.text('Generated by ShareKhata - Split expenses with friends easily', 105, pageHeight - 8, { align: 'center' });
 
-      // Save the PDF
       const fileName = `ShareKhata_Friends_Summary_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
 
@@ -297,28 +212,7 @@ const Dashboard = () => {
     }
   };
 
-  // three dot dropdown things
-
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-
-
-  if (loading) {
+  if (loading && ledgers.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -331,10 +225,15 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-blue-100">
-
+      {/* Show subtle loading indicator when refreshing in background */}
+      {isRefreshing && (
+        <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white text-center py-1 text-sm z-50">
+          Updating...
+        </div>
+      )}
+      
       <div className='bg-[#111D6D] pb-8 rounded-b-3xl'>
         <Header />
-        {/* Personal Expense Card */}
         <div
           onClick={() => navigate('/personal-expense')}
           className="bg-gradient-to-br from-blue-300 to-blue-600 text-white p-5 m-5 my-0 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-all"
@@ -369,31 +268,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-md mx-auto px-4 py-6">
-        {/* Add Friend Button */}
-        {/* <button
-          onClick={() => navigate('/add-friend')}
-          className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors mb-6 flex items-center justify-center space-x-2"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Add Friend</span>
-        </button> */}
-
-        {/* Friends & Ledgers */}
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-semibold text-gray-900">Your Friends</h2>
-            {/* <button
-              onClick={() => generateAllFriendsPDF(ledgers)}
-              disabled={ledgers.length === 0}
-              className="flex items-center space-x-2 text-blue-800 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Export all friends summary as PDF"
-            >
-              <Download className="h-4 w-4" />
-              
-              <span className="text-sm font-medium">Export PDF</span>
-            </button> */}
 
             <div className='flex items-center'>
               <button
@@ -417,7 +295,6 @@ const Dashboard = () => {
                     )}
                   </button>
 
-                  {/* Dropdown Menu */}
                   {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                       <button
@@ -427,19 +304,14 @@ const Dashboard = () => {
                       >
                         Export PDF
                       </button>
-                      {/* Add more items here if needed */}
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
-
           </div>
 
-
           <div className="bg-gradient-to-br from-blue-400 to-blue-200 text-white p-6 rounded-2xl flex items-center justify-between w-full mb-4">
-            {/* Left Section */}
             <div>
               <p className="text-gray-100/60 text-sm">Net Balance</p>
               <h1 className="text-4xl font-bold flex items-center justify-center">
@@ -452,7 +324,6 @@ const Dashboard = () => {
               </h1>
             </div>
 
-            {/* Right Section */}
             <div className="flex flex-col space-y-1">
               <button className="bg-white/40 text-green-600 font-bold px-8 py-2 rounded-lg text-sm">
                 You Get Rs{" "}
@@ -463,7 +334,7 @@ const Dashboard = () => {
                   return balance > 0 ? sum + balance : sum;
                 }, 0)}
               </button>
-              <button className="bg-white/40 text-red-500   font-bold px-8 py-2 rounded-lg text-sm">
+              <button className="bg-white/40 text-red-500 font-bold px-8 py-2 rounded-lg text-sm">
                 You Give Rs{" "}
                 {ledgers.reduce((sum, ledger) => {
                   const balance = ledger.transactions && ledger.transactions.length > 0
@@ -495,33 +366,9 @@ const Dashboard = () => {
             </div>
           ) : (
             ledgers.map((ledger) => {
-              // Debug logging to see what data we're working with
-              // console.log('🔍 LEDGER DEBUG:', {
-              //   ledgerId: ledger.id,
-              //   friendName: ledger.friend.name,
-              //   friendMobile: ledger.friend.mobile,
-              //   serverBalance: ledger.balance,
-              //   hasTransactions: !!ledger.transactions,
-              //   transactionsType: typeof ledger.transactions,
-              //   transactionsLength: ledger.transactions?.length,
-              //   firstTransaction: ledger.transactions?.[0],
-              //   allTransactions: ledger.transactions
-              // });
-
-              // Calculate the correct balance using the same logic as Ledger page
-              // Now we should always have transactions data for accurate calculation
               const calculatedBalance = ledger.transactions && ledger.transactions.length > 0
                 ? calculateFrontendBalance(ledger.transactions)
                 : ledger.balance;
-
-              // console.log('💰 BALANCE CALCULATION RESULT:', {
-              //   ledgerId: ledger.id,
-              //   calculatedBalance,
-              //   serverBalance: ledger.balance,
-              //   match: calculatedBalance === ledger.balance,
-              //   usedServerBalance: !ledger.transactions || ledger.transactions.length === 0,
-              //   transactionCount: ledger.transactions?.length || 0
-              // });
 
               return (
                 <div
@@ -559,7 +406,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Footer */}
         <div className="text-center mt-12">
           <p className="text-gray-400 text-sm">
             ShareKhata - Split expenses with friends easily
@@ -589,4 +435,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

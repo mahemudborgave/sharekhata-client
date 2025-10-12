@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLedger } from '../contexts/LedgerContext'; // ADD THIS IMPORT
 import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download, Copy, MessageSquare, Share2, Check, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
@@ -28,6 +29,9 @@ const Ledger = () => {
   const { id: ledgerId } = useParams();
   const navigate = useNavigate();
   const socketRef = useRef(null);
+  
+  // ADD THIS: Get the refresh function from context
+  const { refreshAfterTransaction } = useLedger();
 
   useEffect(() => {
     fetchLedger();
@@ -41,18 +45,13 @@ const Ledger = () => {
   }, [ledgerId]);
 
   const setupSocket = () => {
-    // console.log('🔌 SETTING UP SOCKET - START');
-    // console.log('🌐 Socket URL:', API_BASE_URL);
-    // console.log('📋 Ledger ID:', ledgerId);
-
     socketRef.current = io(API_BASE_URL);
-
     socketRef.current.emit('join-ledger', ledgerId);
-    // console.log('📡 Emitted join-ledger:', ledgerId);
 
     socketRef.current.on('ledger-updated', (updatedLedger) => {
-      // console.log('🔄 SOCKET LEDGER UPDATE:', updatedLedger);
       setLedger(updatedLedger);
+      // ADDED: Also refresh dashboard cache when socket updates ledger
+      refreshAfterTransaction();
     });
 
     socketRef.current.on('connect_error', (error) => {
@@ -72,37 +71,15 @@ const Ledger = () => {
 
   const fetchLedger = async () => {
     try {
-      // console.log('🔄 FETCHING LEDGER - START');
-      // console.log('📡 API URL:', `${API_BASE_URL}/ledger/${ledgerId}`);
-      // console.log('👤 Current user:', user);
-      // console.log('🆔 User ID:', user?.id, 'User _id:', user?._id);
-      // console.log('👤 User name:', user?.name);
-      // console.log('🔍 User object keys:', user ? Object.keys(user) : 'No user');
-
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/ledger/${ledgerId}`);
-
-      // console.log('📦 FULL SERVER RESPONSE:', response.data);
-      // console.log('📊 LEDGER DATA:', response.data.ledger);
-      // console.log('👥 FRIEND DATA:', response.data.ledger.friend);
-      // console.log('📝 TRANSACTIONS COUNT:', response.data.ledger.transactions.length);
-      // console.log('💰 SERVER BALANCE:', response.data.ledger.balance);
-      // console.log('🔍 DEBUG DATA:', response.data.ledger.debug);
-
-      // Log first few transactions for debugging
-      if (response.data.ledger.transactions.length > 0) {
-        // console.log('🔍 FIRST TRANSACTION:', response.data.ledger.transactions[0]);
-        // console.log('🔍 FIRST TRANSACTION addedBy:', response.data.ledger.transactions[0].addedBy);
-      }
-
       setLedger(response.data.ledger);
-      // console.log('✅ FETCHING LEDGER - COMPLETE');
     } catch (error) {
-  console.error('❌ FETCHING LEDGER - ERROR:', error);
-  console.error('❌ Error response:', error.response?.data);
-  toast.error('Failed to load ledger');
-  setError('Failed to load ledger');
-} finally {
+      console.error('❌ FETCHING LEDGER - ERROR:', error);
+      console.error('❌ Error response:', error.response?.data);
+      toast.error('Failed to load ledger');
+      setError('Failed to load ledger');
+    } finally {
       setLoading(false);
     }
   };
@@ -113,14 +90,12 @@ const Ledger = () => {
 
   const openTransactionModal = (type, transaction = null) => {
     if (transaction) {
-      // Edit mode
       setIsEditMode(true);
       setEditingTransaction(transaction);
       setTransactionType(transaction.type);
       setAmount(transaction.amount.toString());
       setDescription(transaction.description || '');
     } else {
-      // Add mode
       setIsEditMode(false);
       setEditingTransaction(null);
       setTransactionType(type);
@@ -140,65 +115,70 @@ const Ledger = () => {
   };
 
   const handleTransactionSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!amount || amount <= 0) {
-    toast.error('Please enter a valid amount');
-    return;
-  }
-
-  setSubmitting(true);
-
-  try {
-    if (isEditMode && editingTransaction) {
-      // Update existing transaction
-      const requestData = {
-        amount: parseFloat(amount),
-        description: description.trim()
-      };
-
-      await axios.put(
-        `${API_BASE_URL}/ledger/${ledgerId}/transaction/${editingTransaction.id}`,
-        requestData
-      );
-      toast.success('Transaction updated successfully');
-    } else {
-      // Add new transaction
-      const endpoint = transactionType === 'added' ? 'add' : 'receive';
-      const requestData = {
-        amount: parseFloat(amount),
-        description: description.trim()
-      };
-
-      await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
-      toast.success('Transaction added successfully');
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
     }
 
-    closeTransactionModal();
-  } catch (error) {
-    console.error('Transaction error:', error);
-    toast.error(isEditMode ? 'Failed to update transaction' : 'Failed to add transaction');
-  } finally {
-    setSubmitting(false);
-  }
-};
+    setSubmitting(true);
+
+    try {
+      if (isEditMode && editingTransaction) {
+        // Update existing transaction
+        const requestData = {
+          amount: parseFloat(amount),
+          description: description.trim()
+        };
+
+        await axios.put(
+          `${API_BASE_URL}/ledger/${ledgerId}/transaction/${editingTransaction.id}`,
+          requestData
+        );
+        toast.success('Transaction updated successfully');
+      } else {
+        // Add new transaction
+        const endpoint = transactionType === 'added' ? 'add' : 'receive';
+        const requestData = {
+          amount: parseFloat(amount),
+          description: description.trim()
+        };
+
+        await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
+        toast.success('Transaction added successfully');
+      }
+
+      // ADDED: Refresh dashboard cache in background after successful transaction
+      refreshAfterTransaction();
+      
+      closeTransactionModal();
+    } catch (error) {
+      console.error('Transaction error:', error);
+      toast.error(isEditMode ? 'Failed to update transaction' : 'Failed to add transaction');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleDeleteTransaction = async (transactionId) => {
-  if (!window.confirm('Are you sure you want to delete this transaction?')) {
-    return;
-  }
+    if (!window.confirm('Are you sure you want to delete this transaction?')) {
+      return;
+    }
 
-  try {
-    await axios.delete(`${API_BASE_URL}/ledger/${ledgerId}/transaction/${transactionId}`);
-    toast.success('Transaction deleted successfully');
-  } catch (error) {
-    console.error('Delete transaction error:', error);
-    toast.error('Failed to delete transaction');
-  }
-};
+    try {
+      await axios.delete(`${API_BASE_URL}/ledger/${ledgerId}/transaction/${transactionId}`);
+      toast.success('Transaction deleted successfully');
+      
+      // ADDED: Refresh dashboard cache in background after successful deletion
+      refreshAfterTransaction();
+    } catch (error) {
+      console.error('Delete transaction error:', error);
+      toast.error('Failed to delete transaction');
+    }
+  };
 
   const formatBalance = (balance) => {
-    // console.log('Formatting balance:', balance);
     if (balance === 0) return 'All settled';
     if (balance > 0) return `You will get Rs ${balance}`;
     return `You need to give Rs ${Math.abs(balance)}`;
@@ -210,73 +190,25 @@ const Ledger = () => {
     return 'text-red-600';
   };
 
-  // Calculate balance based on frontend transaction data
   const calculateFrontendBalance = (transactions) => {
     let userPaid = 0;
     let userReceived = 0;
 
-    // console.log('=== BALANCE CALCULATION START ===');
-    // console.log('Total transactions:', transactions.length);
-    // console.log('🔍 Current user data:', user);
-    // console.log('🔍 User mobile:', user?.mobile);
-    // console.log('🔍 User name:', user?.name);
-
-    transactions.forEach((transaction, index) => {
-      // NEW LOGIC: Check transaction structure with sentBy/receivedBy
-      // console.log(`Transaction ${index + 1}:`, {
-      //   type: transaction.type,
-      //   amount: transaction.amount,
-      //   sentBy: transaction.sentBy,
-      //   receivedBy: transaction.receivedBy,
-      //   addedBy: transaction.addedBy, // Keep for backward compatibility
-      //   currentUserMobile: user?.mobile,
-      //   currentUserName: user?.name
-      // });
-
-      // Check if this transaction involves the current user using mobile numbers
+    transactions.forEach((transaction) => {
       const currentUserMobile = user?.mobile;
       const isCurrentUserSent = transaction.sentBy === currentUserMobile;
       const isCurrentUserReceived = transaction.receivedBy === currentUserMobile;
 
-      // console.log(`🔍 Transaction ${index + 1} analysis:`);
-      // console.log(`🔍 Current user mobile: ${currentUserMobile}`);
-      // console.log(`🔍 Transaction sentBy: ${transaction.sentBy}`);
-      // console.log(`🔍 Transaction receivedBy: ${transaction.receivedBy}`);
-      // console.log(`🔍 Is current user sender: ${isCurrentUserSent}`);
-      // console.log(`🔍 Is current user receiver: ${isCurrentUserReceived}`);
-
       if (isCurrentUserSent) {
-        // You sent money to someone
         userPaid += transaction.amount;
-        // console.log(`✅ You sent: +${transaction.amount}, Total sent: ${userPaid}`);
       } else if (isCurrentUserReceived) {
-        // You received money from someone
         userReceived += transaction.amount;
-        // console.log(`✅ You received: +${transaction.amount}, Total received: ${userReceived}`);
       }
     });
 
-    // Calculate balance: positive means you get money, negative means you owe money
-    const balance = userPaid - userReceived;
-
-    // console.log('=== CALCULATION SUMMARY ===');
-    // console.log(`You paid: Rs ${userPaid}`);
-    // console.log(`You received: Rs ${userReceived}`);
-    // console.log(`Final balance: Rs ${userPaid} - Rs ${userReceived} = Rs ${balance}`);
-
-    if (balance > 0) {
-      // console.log(`🎯 RESULT: You get Rs ${balance} from friend`);
-    } else if (balance < 0) {
-      // console.log(`🎯 RESULT: You need to give Rs ${Math.abs(balance)} to friend`);
-    } else {
-      // console.log(`🎯 RESULT: All settled!`);
-    }
-    // console.log('=== BALANCE CALCULATION END ===');
-
-    return balance;
+    return userPaid - userReceived;
   };
 
-  // Generate formatted text for sharing
   const generateShareText = () => {
     if (!ledger) return '';
 
@@ -299,25 +231,14 @@ const Ledger = () => {
 
     let shareText = `SHAREKHATA REPORT\n`;
     shareText += `══════════════\n`;
-    // shareText += `${user.name}(I) & ${ledger.friend.name}(You)\n`;
-    // shareText += `Generated on ${new Date().toLocaleDateString('en-IN')}\n\n`;
-
-    // shareText += `CURRENT BALANCE\n`;
-    // shareText += `────────────\n`;
     shareText += `${balanceText}\n\n`;
-
-    // shareText += `SUMMARY\n`;
-    // shareText += `────────────\n`;
-    // shareText += `I Paid: Rs ${youPaid.toFixed(2)}\n`;
-    // shareText += `I Received: Rs ${youReceived.toFixed(2)}\n`;
-    // shareText += `Net: Rs ${(youPaid - youReceived).toFixed(2)}\n\n`;
 
     if (ledger.transactions.length > 0) {
       shareText += `TRANSACTIONS (${ledger.transactions.length})\n`;
       shareText += `────────────\n`;
 
       const totalTransactions = ledger.transactions.length;
-      const start = Math.max(totalTransactions - 5, 0); // Ensure we don't go below 0
+      const start = Math.max(totalTransactions - 5, 0);
 
       for (let i = totalTransactions; i > start; i--) {
         const transaction = ledger.transactions[totalTransactions - i];
@@ -338,7 +259,6 @@ const Ledger = () => {
           shareText += `  ${transaction.description}\n`;
         }
       }
-
     }
 
     shareText += `\n💡 Track complete history\n`;
@@ -347,7 +267,6 @@ const Ledger = () => {
     return shareText;
   };
 
-  // Handle copy to clipboard
   const handleCopy = async () => {
     try {
       const shareText = generateShareText();
@@ -356,7 +275,6 @@ const Ledger = () => {
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
-      // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = generateShareText();
       document.body.appendChild(textArea);
@@ -368,28 +286,17 @@ const Ledger = () => {
     }
   };
 
-  // Handle SMS sharing
   const handleSMS = () => {
     const shareText = generateShareText();
     const encodedText = encodeURIComponent(shareText);
-    // Option 1: Open SMS app without specific recipient (current behavior)
-    // window.open(`sms:?body=${encodedText}`, '_self');
-
-    // Option 2: Send to friend's mobile number directly (uncomment to use)
     const friendMobile = ledger.friend.mobile;
     window.open(`sms:${friendMobile}?body=${encodedText}`, '_self');
   };
 
-  // Handle WhatsApp sharing
   const handleWhatsApp = () => {
     const shareText = generateShareText();
     const encodedText = encodeURIComponent(shareText);
-    // Option 1: Open WhatsApp without specific recipient (current behavior)
-    // window.open(`https://wa.me/?text=${encodedText}`, '_blank');
-
-    // Option 2: Send to friend's mobile number directly (uncomment to use)
     const friendMobile = ledger.friend.mobile;
-    // // Remove any non-digit characters and ensure it starts with country code
     const cleanMobile = friendMobile.replace(/\D/g, '');
     const whatsappNumber = cleanMobile.startsWith('91') ? cleanMobile : `91${cleanMobile}`;
     window.open(`https://wa.me/${whatsappNumber}?text=${encodedText}`, '_blank');
@@ -438,7 +345,6 @@ const Ledger = () => {
     });
   };
 
-  // Generate PDF export of transactions
   const generatePDF = (transactions) => {
     if (!transactions || transactions.length === 0) {
       alert('No transactions to export');
@@ -446,22 +352,18 @@ const Ledger = () => {
     }
 
     try {
-      // Create new jsPDF instance with proper configuration
       const doc = new jsPDF('p', 'mm', 'a4');
 
-      // Add header
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
       doc.text('ShareKhata - Transaction Report', 105, 15, { align: 'center' });
 
-      // Add ledger details - more compact spacing
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Friend: ${ledger.friend.name}`, 20, 25);
       doc.text(`Mobile: ${ledger.friend.mobile}`, 20, 31);
       doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN')}`, 20, 37);
 
-      // Clean balance text without special characters - use direct text
       const balance = calculateFrontendBalance(transactions);
       let balanceText = '';
       if (balance === 0) {
@@ -476,7 +378,6 @@ const Ledger = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`Current Balance: ${balanceText}`, 20, 43);
 
-      // Add summary section - more compact
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Summary', 20, 52);
@@ -490,27 +391,23 @@ const Ledger = () => {
         .filter(t => t.receivedBy === user?.mobile)
         .reduce((sum, t) => sum + t.amount, 0);
 
-      // Clean amount text without special characters - use simple formatting
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`You Paid: Rs ${youPaid.toFixed(2)}`, 20, 59);
       doc.text(`You Received: Rs ${youReceived.toFixed(2)}`, 20, 65);
       doc.text(`Net Balance: Rs ${(youPaid - youReceived).toFixed(2)}`, 20, 71);
 
-      // Add transactions section - more compact
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Transaction Details', 20, 80);
 
-      // Manually create table structure - more compact
       let yPosition = 88;
-      const lineHeight = 6; // Reduced from 8 to 6
+      const lineHeight = 6;
       const colWidths = [12, 35, 22, 32, 22, 18, 30];
       const colPositions = [20, 32, 67, 89, 121, 143, 161];
 
-      // Table header - more compact
       doc.setFillColor(59, 130, 246);
-      doc.rect(20, yPosition - 4, 170, 6, 'F'); // Reduced height from 8 to 6
+      doc.rect(20, yPosition - 4, 170, 6, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
@@ -520,14 +417,12 @@ const Ledger = () => {
         doc.text(header, colPositions[index], yPosition);
       });
 
-      yPosition += 10; // Reduced from 15 to 10
+      yPosition += 10;
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
 
-      // Table rows - more compact
       transactions.forEach((transaction, index) => {
-        // Check if we need a new page - adjusted threshold
         if (yPosition > 280) {
           doc.addPage();
           yPosition = 15;
@@ -553,9 +448,7 @@ const Ledger = () => {
           isCurrentUserInvolved ? 'Your Transaction' : 'Friend\'s Transaction'
         ];
 
-        // Add row data
         rowData.forEach((cellData, cellIndex) => {
-          // Truncate long text to fit column width - more aggressive truncation
           let displayText = cellData;
           if (cellData.length > 12 && cellIndex !== 0) {
             displayText = cellData.substring(0, 10) + '...';
@@ -566,25 +459,20 @@ const Ledger = () => {
 
         yPosition += lineHeight;
 
-        // Add separator line every few rows - less frequent
         if ((index + 1) % 8 === 0) {
           doc.setDrawColor(200, 200, 200);
           doc.line(20, yPosition - 1, 190, yPosition - 1);
-          yPosition += 2; // Reduced spacing
+          yPosition += 2;
         }
       });
 
-      // Add footer - more compact
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(7);
       doc.setFont('helvetica', 'italic');
       doc.text('Generated by ShareKhata - Split expenses with friends easily', 105, pageHeight - 8, { align: 'center' });
 
-      // Save the PDF
       const fileName = `ShareKhata_${ledger.friend.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
-
-      // console.log('✅ PDF generated successfully:', fileName);
     } catch (error) {
       console.error('❌ PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -644,7 +532,6 @@ const Ledger = () => {
       {/* Share Section */}
       <div className="max-w-md mx-auto px-4 py-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          {/* Share Button/Dropdown Trigger */}
           <button
             onClick={() => setShowShareSection(!showShareSection)}
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors rounded-xl"
@@ -663,7 +550,6 @@ const Ledger = () => {
             </svg>
           </button>
 
-          {/* Collapsible Share Options */}
           {showShareSection && (
             <div className="px-4 pb-4">
               <div className="border-t border-gray-200 pt-4">
@@ -732,34 +618,9 @@ const Ledger = () => {
             <div>
               <div className="text-2xl font-bold text-red-600 flex items-center justify-center">
                 <IndianRupee size={20} /> {(() => {
-                  // Debug: Log all transaction data first
-                  // console.log('🔍 SUMMARY DEBUG - All transactions:', ledger.transactions);
-                  // console.log('🔍 SUMMARY DEBUG - Current user mobile:', user?.mobile);
-                  // console.log('🔍 SUMMARY DEBUG - User object:', user);
-
-                  // FIXED LOGIC: You paid = you are the sender (sentBy matches your mobile)
                   const youPaid = ledger.transactions
-                    .filter(t => {
-                      const isMatch = t.sentBy === user?.mobile;
-                      // console.log(`🔍 Transaction filter check - You Paid:`, {
-                      //   transactionId: t.id,
-                      //   type: t.type,
-                      //   sentBy: t.sentBy,
-                      //   receivedBy: t.receivedBy,
-                      //   userMobile: user?.mobile,
-                      //   isMatch: isMatch,
-                      //   amount: t.amount
-                      // });
-                      return isMatch;
-                    })
+                    .filter(t => t.sentBy === user?.mobile)
                     .reduce((sum, t) => sum + t.amount, 0);
-
-                  // console.log('🔍 Summary - You Paid calculation:', {
-                  //   userMobile: user?.mobile,
-                  //   totalTransactions: ledger.transactions.length,
-                  //   matchingTransactions: ledger.transactions.filter(t => t.sentBy === user?.mobile),
-                  //   total: youPaid
-                  // });
                   return youPaid.toFixed(2);
                 })()}
               </div>
@@ -768,29 +629,9 @@ const Ledger = () => {
             <div>
               <div className="text-2xl font-bold text-green-600 flex items-center justify-center">
                 <IndianRupee size={20} /> {(() => {
-                  // FIXED LOGIC: You received = you are the receiver (receivedBy matches your mobile)
                   const youReceived = ledger.transactions
-                    .filter(t => {
-                      const isMatch = t.receivedBy === user?.mobile;
-                      // console.log(`🔍 Transaction filter check - You Received:`, {
-                      //   transactionId: t.id,
-                      //   type: t.type,
-                      //   sentBy: t.sentBy,
-                      //   receivedBy: t.receivedBy,
-                      //   userMobile: user?.mobile,
-                      //   isMatch: isMatch,
-                      //   amount: t.amount
-                      // });
-                      return isMatch;
-                    })
+                    .filter(t => t.receivedBy === user?.mobile)
                     .reduce((sum, t) => sum + t.amount, 0);
-
-                  // console.log('🔍 Summary - You Received calculation:', {
-                  //   userMobile: user?.mobile,
-                  //   totalTransactions: ledger.transactions.length,
-                  //   matchingTransactions: ledger.transactions.filter(t => t.receivedBy === user?.mobile),
-                  //   total: youReceived
-                  // });
                   return youReceived.toFixed(2);
                 })()}
               </div>
@@ -867,7 +708,6 @@ const Ledger = () => {
             </div>
           ) : (
             <div className="space-y-3">
-
               {ledger.transactions.map((transaction, index) => {
                 const transactionNumber = ledger.transactions.length - index;
                 const isCurrentUserSent = transaction.sentBy === user.mobile;
@@ -875,8 +715,6 @@ const Ledger = () => {
                 const isCurrentUserInvolved = isCurrentUserSent || isCurrentUserReceived;
                 const isMoneyReceived = isCurrentUserReceived;
                 const isMoneySent = isCurrentUserSent;
-
-                // Check if current user can edit/delete (only if they added the transaction)
                 const canEditDelete = transaction.addedBy.id === user?.id;
 
                 return (
@@ -933,25 +771,24 @@ const Ledger = () => {
                         <Clock className="h-3 w-3" />
                         <span>{formatTime(transaction.timestamp)}</span>
                       </div>
-                      {/* Edit and Delete buttons - only show if user added this transaction */}
-                        {canEditDelete && (
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={() => openTransactionModal(transaction.type, transaction)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                              title="Edit transaction"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTransaction(transaction.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
-                              title="Delete transaction"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
+                      {canEditDelete && (
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => openTransactionModal(transaction.type, transaction)}
+                            className="p-1.5 text-gray-400 hover:bg-blue-100 hover:text-blue-600 rounded transition-colors"
+                            title="Edit transaction"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTransaction(transaction.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"
+                            title="Delete transaction"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1020,7 +857,7 @@ const Ledger = () => {
                 >
                   {submitting
                     ? (isEditMode ? 'Updating...' : 'Adding...')
-                    : (isEditMode ? 'Update Transaction' : 'Add Transaction')
+                    : (isEditMode ? 'Update' : 'Add')
                   }
                 </button>
               </div>

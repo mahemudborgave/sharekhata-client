@@ -1,25 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useLedger } from '../contexts/LedgerContext'; // Import the context
+import { useLedger } from '../contexts/LedgerContext';
 import { Plus, User, ArrowRight, IndianRupee, Download, EllipsisVertical, X } from 'lucide-react';
 import Header from './Header';
 import jsPDF from 'jspdf';
 import { Wallet } from 'lucide-react';
 
 const Dashboard = () => {
-  // Use context instead of local state
   const { ledgers, personalExpenseSummary, loading, error, fetchLedgers } = useLedger();
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const hasFetchedRef = useRef(false); // Add ref to track if fetch has been called
 
   useEffect(() => {
-    // Fetch ledgers, but it will use cache if available
-    fetchLedgers();
-  }, [fetchLedgers]);
+    // Only fetch once when component mounts
+    if (!hasFetchedRef.current) {
+      fetchLedgers();
+      hasFetchedRef.current = true;
+    }
+  }, []); // Remove fetchLedgers from dependencies
 
   // Add refresh indicator for background updates
   const isRefreshing = loading && ledgers.length > 0;
@@ -212,7 +215,8 @@ const Dashboard = () => {
     }
   };
 
-  if (loading && ledgers.length === 0) {
+  // Show loading only if we don't have any data yet
+  if (loading && ledgers.length === 0 && !error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -283,7 +287,7 @@ const Dashboard = () => {
               </button>
 
               <div>
-                <div className="relative">
+                <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setDropdownOpen((prev) => !prev)}
                     className="rounded-sm w-7 h-7 p-1 flex items-center justify-center"
@@ -298,7 +302,10 @@ const Dashboard = () => {
                   {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                       <button
-                        onClick={() => generateAllFriendsPDF(ledgers)}
+                        onClick={() => {
+                          generateAllFriendsPDF(ledgers);
+                          setDropdownOpen(false);
+                        }}
                         disabled={ledgers.length === 0}
                         className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -352,7 +359,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          {ledgers.length === 0 ? (
+          {ledgers.length === 0 && !loading ? (
             <div className="text-center py-12">
               <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No friends yet</h3>

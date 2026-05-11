@@ -157,8 +157,8 @@ const App = () => {
     <Router>
       <AuthProvider>
         <LedgerProvider>
-          {/* <AppContent /> */}
-          {downApp()}
+          <AppContent />
+          {/* {downApp()} */}
         </LedgerProvider>
       </AuthProvider>
     </Router>

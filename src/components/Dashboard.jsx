@@ -67,14 +67,20 @@ const Dashboard = () => {
 
   const formatBalance = (balance) => {
     if (balance === 0) return 'All settled';
-    if (balance > 0) return `You will get Rs ${balance}`;
-    return `You need to give Rs ${Math.abs(balance)}`;
+    if (balance > 0) return `You will get Rs. ${balance}`;
+    return `You need to give Rs. ${Math.abs(balance)}`;
   };
 
   const getBalanceColor = (balance) => {
     if (balance === 0) return 'text-gray-600';
     if (balance > 0) return 'text-green-600';
     return 'text-red-600';
+  };
+
+  const getBgColor = (balance) => {
+    if (balance === 0) return 'bg-gray-100';
+    if (balance > 0) return 'bg-green-100';
+    return 'bg-red-100';
   };
 
   const getAvatar = (user) => {
@@ -318,10 +324,10 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-400 to-blue-200 text-white p-6 rounded-2xl flex items-center justify-between w-full mb-4">
+          <div className="bg-gradient-to-br from-blue-200 to-blue-400 text-white p-6 rounded-2xl w-full mb-4 flex justify-between items-center">
             <div>
-              <p className="text-gray-100/60 text-sm">Net Balance</p>
-              <h1 className="text-4xl font-bold flex items-center justify-center">
+              <p className="text-gray-100 text-[13px]">Net Balance</p>
+              <h1 className="text-2xl font-bold flex items-center justify-end">
                 <IndianRupee /> {(ledgers.reduce((acc, ledger) => {
                   const balance = ledger.transactions && ledger.transactions.length > 0
                     ? calculateFrontendBalance(ledger.transactions)
@@ -331,8 +337,8 @@ const Dashboard = () => {
               </h1>
             </div>
 
-            <div className="flex flex-col space-y-1">
-              <button className="bg-white/40 text-green-600 font-bold px-8 py-2 rounded-lg text-sm">
+            <div className="flex flex-col">
+              <button className="text-green-600 font-bold rounded-lg text-sm text-right">
                 You Get Rs{" "}
                 {ledgers.reduce((sum, ledger) => {
                   const balance = ledger.transactions && ledger.transactions.length > 0
@@ -341,7 +347,7 @@ const Dashboard = () => {
                   return balance > 0 ? sum + balance : sum;
                 }, 0)}
               </button>
-              <button className="bg-white/40 text-red-500 font-bold px-8 py-2 rounded-lg text-sm">
+              <button className="text-red-500 font-bold rounded-lg text-sm  text-right">
                 You Give Rs{" "}
                 {ledgers.reduce((sum, ledger) => {
                   const balance = ledger.transactions && ledger.transactions.length > 0
@@ -355,7 +361,7 @@ const Dashboard = () => {
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
+              {error} 
             </div>
           )}
 
@@ -387,14 +393,17 @@ const Dashboard = () => {
                     <div className="flex items-center space-x-3">
                       {getAvatar(ledger.friend)}
                       <div>
-                        <h3 className="font-semibold text-gray-900">{ledger.friend.name}</h3>
-                        <p className="text-sm text-gray-500">{ledger.friend.mobile}</p>
+                        <h3 className="font-semibold text-base text-gray-900">{ledger.friend.name}</h3>
+                        {/* <p className="text-sm text-gray-500">{ledger.friend.mobile}</p> */}
+                        <span className={`text-[15px] px-1 ${getBalanceColor(calculatedBalance)}`}>
+                        {formatBalance(calculatedBalance)}
+                      </span>
                       </div>
                     </div>
-                    <ArrowRight className="h-5 w-5 text-gray-400" />
+                    <ArrowRight className="text-gray-500 p-2 bg-gray-400/20 rounded" size={40}/>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-200">
+                  {/* <div className="mt-3 pt-3 border-t border-gray-200">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Balance</span>
                       <span className={`font-semibold ${getBalanceColor(calculatedBalance)}`}>
@@ -406,7 +415,7 @@ const Dashboard = () => {
                       <span className="text-sm text-gray-600">Transactions</span>
                       <span className="text-sm text-gray-500">{ledger.transactionCount || 0}</span>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               );
             })

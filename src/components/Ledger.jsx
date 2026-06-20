@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLedger } from '../contexts/LedgerContext'; // ADD THIS IMPORT
-import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Clock, Download, Copy, MessageSquare, Share2, Check, Edit2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, IndianRupee, Calendar, Download, Copy, MessageSquare, Share2, Check, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import jsPDF from 'jspdf';
@@ -19,6 +19,7 @@ const Ledger = () => {
   const [transactionType, setTransactionType] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [transactionDate, setTransactionDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareSection, setShowShareSection] = useState(false);
@@ -88,6 +89,11 @@ const Ledger = () => {
     navigate('/dashboard');
   };
 
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // YYYY-MM-DD
+  };
+
   const openTransactionModal = (type, transaction = null) => {
     if (transaction) {
       setIsEditMode(true);
@@ -95,12 +101,15 @@ const Ledger = () => {
       setTransactionType(transaction.type);
       setAmount(transaction.amount.toString());
       setDescription(transaction.description || '');
+      // Pre-fill with the transaction's existing date
+      setTransactionDate(new Date(transaction.timestamp).toISOString().split('T')[0]);
     } else {
       setIsEditMode(false);
       setEditingTransaction(null);
       setTransactionType(type);
       setAmount('');
       setDescription('');
+      setTransactionDate(getTodayDate());
     }
     setShowAmountModal(true);
   };
@@ -110,6 +119,7 @@ const Ledger = () => {
     setTransactionType('');
     setAmount('');
     setDescription('');
+    setTransactionDate('');
     setIsEditMode(false);
     setEditingTransaction(null);
   };
@@ -129,7 +139,8 @@ const Ledger = () => {
         // Update existing transaction
         const requestData = {
           amount: parseFloat(amount),
-          description: description.trim()
+          description: description.trim(),
+          date: transactionDate || undefined
         };
 
         await axios.put(
@@ -142,7 +153,8 @@ const Ledger = () => {
         const endpoint = transactionType === 'added' ? 'add' : 'receive';
         const requestData = {
           amount: parseFloat(amount),
-          description: description.trim()
+          description: description.trim(),
+          date: transactionDate || undefined
         };
 
         await axios.post(`${API_BASE_URL}/ledger/${ledgerId}/${endpoint}`, requestData);
@@ -767,10 +779,6 @@ const Ledger = () => {
                         <Calendar className="h-3 w-3" />
                         <span>{formatDate(transaction.timestamp)}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatTime(transaction.timestamp)}</span>
-                      </div>
                       {canEditDelete && (
                         <div className="flex items-center space-x-1">
                           <button
@@ -839,6 +847,21 @@ const Ledger = () => {
                   className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="e.g., Lunch, Movie tickets"
                   maxLength="100"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="transactionDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Date
+                </label>
+                <input
+                  id="transactionDate"
+                  type="date"
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
                 />
               </div>
 

@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from './Header';
-import { Plus, X, Edit2, Trash2, TrendingDown, Calendar, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { Plus, X, Edit2, Trash2, TrendingDown, Calendar, ChevronLeft, ChevronRight, CalendarDays, Wallet, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-const categories = [
-  { value: 'food', label: '🍔 Food', color: 'bg-orange-100 text-orange-800' },
-  { value: 'transport', label: '🚗 Transport', color: 'bg-blue-100 text-blue-800' },
-  { value: 'shopping', label: '🛍️ Shopping', color: 'bg-pink-100 text-pink-800' },
-  { value: 'bills', label: '💡 Bills', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'entertainment', label: '🎬 Fun', color: 'bg-purple-100 text-purple-800' },
-  { value: 'health', label: '🏥 Health', color: 'bg-red-100 text-red-800' },
-  { value: 'education', label: '📚 Education', color: 'bg-green-100 text-green-800' },
-  { value: 'other', label: '📦 Other', color: 'bg-gray-100 text-gray-800' }
-];
+// const categories = [
+//   { value: 'food', label: '🍔 Food', color: 'bg-orange-100 text-orange-800' },
+//   { value: 'transport', label: '🚗 Transport', color: 'bg-blue-100 text-blue-800' },
+//   { value: 'shopping', label: '🛍️ Shopping', color: 'bg-pink-100 text-pink-800' },
+//   { value: 'bills', label: '💡 Bills', color: 'bg-yellow-100 text-yellow-800' },
+//   { value: 'entertainment', label: '🎬 Fun', color: 'bg-purple-100 text-purple-800' },
+//   { value: 'health', label: '🏥 Health', color: 'bg-red-100 text-red-800' },
+//   { value: 'education', label: '📚 Education', color: 'bg-green-100 text-green-800' },
+//   { value: 'other', label: '📦 Other', color: 'bg-gray-100 text-gray-800' }
+// ];
+
+// Get today's date as YYYY-MM-DD in local timezone (avoids UTC offset shifting the day)
+const getLocalTodayString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const PersonalExpense = () => {
   const [summary, setSummary] = useState({
@@ -40,9 +46,9 @@ const PersonalExpense = () => {
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
-    category: 'other',
+    // category: 'other',
     transactionType: 'expense',
-    date: new Date().toISOString().split('T')[0]
+    date: getLocalTodayString()
   });
 
   useEffect(() => {
@@ -90,7 +96,7 @@ const PersonalExpense = () => {
       // Group transactions by date
       const grouped = {};
       response.data.transactions.forEach(transaction => {
-        const date = new Date(transaction.date).toDateString();
+        const date = parseLocalDate(transaction.date).toDateString();
         if (!grouped[date]) {
           grouped[date] = {
             total: 0,
@@ -163,9 +169,9 @@ const PersonalExpense = () => {
       setFormData({
         amount: '',
         description: '',
-        category: 'other',
+        // category: 'other',
         transactionType: 'expense',
-        date: new Date().toISOString().split('T')[0]
+        date: getLocalTodayString()
       });
       fetchData();
       if (showCalendarModal) fetchCalendarData();
@@ -180,9 +186,12 @@ const PersonalExpense = () => {
     setFormData({
       amount: transaction.amount.toString(),
       description: transaction.description,
-      category: transaction.category,
+      // category: transaction.category,
       transactionType: transaction.transactionType || 'expense',
-      date: new Date(transaction.date).toISOString().split('T')[0]
+      date: (() => {
+        const d = parseLocalDate(transaction.date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })()
     });
     setShowEditModal(true);
   };
@@ -201,9 +210,9 @@ const PersonalExpense = () => {
       setFormData({
         amount: '',
         description: '',
-        category: 'other',
+        // category: 'other',
         transactionType: 'expense',
-        date: new Date().toISOString().split('T')[0]
+        date: getLocalTodayString()
       });
       fetchData();
       if (showCalendarModal) fetchCalendarData();
@@ -243,8 +252,28 @@ const PersonalExpense = () => {
     }).format(amount);
   };
 
+  // Parse a date string as local date to avoid UTC midnight shift.
+  // Server stores dates at noon UTC (T12:00Z), so new Date() on an ISO string
+  // will always land on the correct local calendar day for any timezone.
+  const parseLocalDate = (dateString) => {
+    if (!dateString) return new Date();
+    // Plain YYYY-MM-DD (e.g. from a date input) — treat as local to avoid shift
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    // ISO string from server (stored at noon UTC) — safe to parse normally
+    return new Date(dateString);
+  };
+
+  // Get today's date as YYYY-MM-DD using local timezone (not UTC)
+  const getTodayString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    const date = parseLocalDate(dateString);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -258,9 +287,9 @@ const PersonalExpense = () => {
     }
   };
 
-  const getCategoryInfo = (category) => {
-    return categories.find(c => c.value === category) || categories[categories.length - 1];
-  };
+  // const getCategoryInfo = (category) => {
+  //   return categories.find(c => c.value === category) || categories[categories.length - 1];
+  // };
 
   const closeModal = () => {
     setShowAddModal(false);
@@ -269,9 +298,9 @@ const PersonalExpense = () => {
     setFormData({
       amount: '',
       description: '',
-      category: 'other',
+      // category: 'other',
       transactionType: 'expense',
-      date: new Date().toISOString().split('T')[0]
+      date: getLocalTodayString()
     });
   };
 
@@ -279,7 +308,7 @@ const PersonalExpense = () => {
   const groupTransactionsByDate = (transactions) => {
     const grouped = {};
     transactions.forEach(transaction => {
-      const date = new Date(transaction.date).toDateString();
+      const date = parseLocalDate(transaction.date).toDateString();
       if (!grouped[date]) {
         grouped[date] = [];
       }
@@ -312,11 +341,11 @@ const PersonalExpense = () => {
       <Header />
 
       {/* Header */}
-      <div className="bg-blue-900 text-white p-6 pt-3 rounded-b-2xl">
+      {/* <div className="text-black p-6 pt-3 rounded-b-2xl">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold mb-1">Personal Expenses</h1>
-            <p className="text-blue-100 text-sm">Track your spending habits</p>
+            <p className="text-black-100 text-sm">Track your spending habits</p>
           </div>
           <button
             onClick={() => setShowCalendarModal(true)}
@@ -326,36 +355,57 @@ const PersonalExpense = () => {
             <CalendarDays className="w-6 h-6" />
           </button>
         </div>
-      </div>
+      </div> */}
 
-      {/* Summary Cards */}
-      <div className="px-4 -mt-4 mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <p className="text-gray-500 text-xs mb-1">Today</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.today)}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <p className="text-gray-500 text-xs mb-1">Yesterday</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.yesterday)}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <p className="text-gray-500 text-xs mb-1">Last 7 Days</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.lastWeek)}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <p className="text-gray-500 text-xs mb-1">Last 30 Days</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.lastMonth)}</p>
+      <div className="flex items-center justify-between my-3 px-4">
+              <div className="flex items-center space-x-3">
+                {/* <div className="bg-white/20 rounded-lg p-2">
+                  <Wallet className="h-6 w-6" />
+                </div> */}
+                <div>
+                  <h3 className="text-lg font-semibold text-[#111D6D]">Personal Expenses</h3>
+                  <p className="text-sm border-l-3 pl-2 text-[#111D6D]/60">Track your spending</p>
+                </div>  
+              </div>
+              <button
+                onClick={() => setShowCalendarModal(true)}
+                className="bg-[#111D6D]/20 p-2 rounded-xl transition-colors flex flex-col items-center"
+                title="View Calendar"
+              >
+                <CalendarDays className="w-6 h-6" />
+                <p className='text-[9px] px-2'>Open</p>
+              </button>
+            </div>
+
+      <div
+          className="bg-gradient-to-br from-blue-300 to-blue-600 text-white p-5 m-2 rounded-2xl shadow-lg cursor-pointer hover:shadow-xl transition-all"
+        >                    
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Today</p>
+              <p className="text-base font-bold">{formatCurrency(summary.today)}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Yesterday</p>
+              <p className="text-base font-bold">{formatCurrency(summary.yesterday)}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Week</p>
+              <p className="text-base font-bold">{formatCurrency(summary.lastWeek)}</p>
+            </div>
+            {/* <div className="bg-white/10 rounded-lg p-2.5">
+              <p className="text-purple-100 text-xs mb-1">Week</p>
+              <p className="text-base font-bold">{formatCurrency(summary.lastMonth)}</p>
+            </div> */}
           </div>
         </div>
-      </div>
 
       {/* Transactions List with Date Segregation */}
-      <div className="px-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-4 mt-5">
+        {/* <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
           <span className="text-sm text-gray-500">{transactions.length} total</span>
-        </div>
+        </div> */}
 
         <div className="space-y-4">
           {transactions.length === 0 ? (
@@ -389,13 +439,16 @@ const PersonalExpense = () => {
 
                   {/* Transactions for this day */}
                   <div className="space-y-2">
-                    {dayTransactions.map((transaction) => {
-                      const categoryInfo = getCategoryInfo(transaction.category);
+                    {dayTransactions.map((transaction, txIndex) => {
+                      // const categoryInfo = getCategoryInfo(transaction.category);
                       return (
-                        <div key={transaction._id} className="bg-white rounded-lg shadow-sm p-3 flex items-center justify-between">
-                          <div className="flex items-center space-x-3 flex-1">
-                            <div className={`${categoryInfo.color} rounded-lg p-2 text-lg`}>
+                        <div key={transaction._id} className="bg-white rounded-lg border-1 border-gray-200 p-3 flex items-center justify-between">
+                          <div className="flex items-top space-x-3 flex-1">
+                            {/* <div className={`${categoryInfo.color} rounded-lg p-2 text-lg`}>
                               {categoryInfo.label.split(' ')[0]}
+                            </div> */}
+                            <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-semibold flex-shrink-0"> 
+                              {txIndex + 1}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className='flex justify-between items-center'>
@@ -579,13 +632,13 @@ const PersonalExpense = () => {
 
             <div className="p-4 space-y-3">
               {selectedDateTransactions.map((transaction) => {
-                const categoryInfo = getCategoryInfo(transaction.category);
+                // const categoryInfo = getCategoryInfo(transaction.category);
                 return (
                   <div key={transaction._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                     <div className="flex items-center space-x-3 flex-1">
-                      <div className={`${categoryInfo.color} rounded-lg p-2 text-lg`}>
+                      {/* <div className={`${categoryInfo.color} rounded-lg p-2 text-lg`}>
                         {categoryInfo.label.split(' ')[0]}
-                      </div>
+                      </div> */}
                       <div className="flex-1 min-w-0">
                         <div className='flex justify-between items-center'>
                           <p className="font-medium text-gray-900 leading-tight">{transaction.description}</p>
@@ -668,7 +721,8 @@ const PersonalExpense = () => {
                 />
               </div>
 
-              <div>
+              {/* Category picker - not needed now */}
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category
                 </label>
@@ -688,7 +742,7 @@ const PersonalExpense = () => {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -758,7 +812,8 @@ const PersonalExpense = () => {
                 />
               </div>
 
-              <div>
+              {/* Category picker - not needed now */}
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category
                 </label>
@@ -778,7 +833,7 @@ const PersonalExpense = () => {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

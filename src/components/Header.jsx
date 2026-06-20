@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut, NotebookPen, ClipboardList, Accessibility } from 'lucide-react';
+import { User, LogOut, NotebookPen, ClipboardList, Accessibility, CircleUserRound, Guitar } from 'lucide-react';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -44,7 +44,12 @@ const Header = () => {
                 {user.name.split(" ")[0]}
               </span>
               <div className="w-8 h-8 bg-blue-800/50 rounded-lg flex items-center justify-center">
-                <Accessibility className="h-5 w-5 text-white" />
+                {/* <Accessibility className="h-5 w-5 text-white" /> */}
+                {/* <User className="h-5 w-5 text-white" /> */}
+                {/* <CircleUserRound className="h-5 w-5 text-white" /> */}
+                {/* <CircleUserRound size={32} strokeWidth={2.25} className="h-5 w-5 text-white"/> */}
+                <Guitar className="h-5 w-5 text-white"/>
+                
               </div>
             </button>
 

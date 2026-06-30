@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import Ledger from './components/Ledger';
 import AddFriend from './components/AddFriend';
 import Profile from './components/Profile';
+import ForgotPassword from './components/ForgotPassword';
 import './App.css';
 import PersonalExpense from './components/PersonalExpense';
 import { Toaster } from 'react-hot-toast';
@@ -89,6 +90,10 @@ const AppContent = () => {
         <Route
           path="/register"
           element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <Register />}
+        />
+        <Route
+          path="/forgot-password"
+          element={user ? <Navigate to={lastRoute || "/dashboard"} /> : <ForgotPassword />}
         />
         <Route
           path="/dashboard"

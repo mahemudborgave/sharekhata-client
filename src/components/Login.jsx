@@ -128,6 +128,16 @@ const Login = () => {
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
+
+            {/* Forgot Password */}
+            <div className="text-center">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 hover:underline font-medium"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </form>
 
           {/* Divider */}

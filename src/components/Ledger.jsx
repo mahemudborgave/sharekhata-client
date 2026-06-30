@@ -102,7 +102,10 @@ const Ledger = () => {
       setAmount(transaction.amount.toString());
       setDescription(transaction.description || '');
       // Pre-fill with the transaction's existing date
-      setTransactionDate(new Date(transaction.timestamp).toISOString().split('T')[0]);
+      const ts = new Date(transaction.timestamp);
+      setTransactionDate(
+        `${ts.getUTCFullYear()}-${String(ts.getUTCMonth() + 1).padStart(2, '0')}-${String(ts.getUTCDate()).padStart(2, '0')}`
+      );
     } else {
       setIsEditMode(false);
       setEditingTransaction(null);
@@ -779,6 +782,21 @@ const Ledger = () => {
                         <Calendar className="h-3 w-3" />
                         <span>{formatDate(transaction.timestamp)}</span>
                       </div>
+                      {/* <div className="flex items-center space-x-1 text-gray-400 italic">
+                        <span>
+                          {transaction.createdAt && transaction.timestamp &&
+                           new Date(transaction.createdAt).toDateString() !== new Date(transaction.timestamp).toDateString()
+                            ? 'modified'
+                            : 'created'
+                          } {transaction.createdAt
+                            ? new Date(transaction.createdAt).toLocaleString('en-IN', {
+                                day: 'numeric', month: 'short',
+                                hour: '2-digit', minute: '2-digit', hour12: true
+                              })
+                            : ''
+                          }
+                        </span>
+                      </div> */}
                       {canEditDelete && (
                         <div className="flex items-center space-x-1">
                           <button
@@ -798,6 +816,17 @@ const Ledger = () => {
                         </div>
                       )}
                     </div>
+                    <div className="flex items-center justify-end text-end space-x-1 text-gray-400 italic text-xs">
+                        <span>
+                          created {transaction.createdAt
+                            ? new Date(transaction.createdAt).toLocaleString('en-IN', {
+                                day: 'numeric', month: 'short',
+                                hour: '2-digit', minute: '2-digit', hour12: true
+                              })
+                            : ''
+                          }
+                        </span>
+                      </div>
                   </div>
                 );
               })}

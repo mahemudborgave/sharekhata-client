@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Header from './Header';
 import { Plus, X, Edit2, Trash2, TrendingDown, Calendar, ChevronLeft, ChevronRight, CalendarDays, Wallet, ArrowRight } from 'lucide-react';
@@ -40,6 +40,8 @@ const PersonalExpense = () => {
   const [selectedDateTransactions, setSelectedDateTransactions] = useState([]);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const swipeStartX = useRef(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarData, setCalendarData] = useState({});
 
@@ -65,7 +67,7 @@ const PersonalExpense = () => {
     try {
       const token = localStorage.getItem('token');
       const [summaryRes, transactionsRes] = await Promise.all([
-        axios.get(`${API_URL}/personal-expense/summary`, {
+        axios.get(`${API_URL}/personal-expense/summary?localDate=${getLocalTodayString()}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API_URL}/personal-expense/transactions?limit=100`, {
@@ -158,6 +160,7 @@ const PersonalExpense = () => {
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/personal-expense/add`, formData, {
@@ -178,6 +181,8 @@ const PersonalExpense = () => {
     } catch (error) {
       console.error('Error adding transaction:', error);
       toast.error('Failed to add expense');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -198,6 +203,7 @@ const PersonalExpense = () => {
 
   const handleUpdateTransaction = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       await axios.put(`${API_URL}/personal-expense/${editingTransaction._id}`, formData, {
@@ -219,6 +225,8 @@ const PersonalExpense = () => {
     } catch (error) {
       console.error('Error updating transaction:', error);
       toast.error('Failed to update expense');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -252,18 +260,19 @@ const PersonalExpense = () => {
     }).format(amount);
   };
 
-  // Parse a date string as local date to avoid UTC midnight shift.
-  // Server stores dates at noon UTC (T12:00Z), so new Date() on an ISO string
-  // will always land on the correct local calendar day for any timezone.
+  // Parse a date value to a local Date object, correctly handling IST.
+  // Stored as UTC midnight (T00:00:00Z), so we extract the UTC date parts
+  // directly to avoid the ISO→local shift turning Jun 16 into Jun 15 in IST.
   const parseLocalDate = (dateString) => {
     if (!dateString) return new Date();
-    // Plain YYYY-MM-DD (e.g. from a date input) — treat as local to avoid shift
+    // Plain YYYY-MM-DD from a date input — treat as local
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       const [year, month, day] = dateString.split('-').map(Number);
       return new Date(year, month - 1, day);
     }
-    // ISO string from server (stored at noon UTC) — safe to parse normally
-    return new Date(dateString);
+    // ISO string from server — read UTC date parts to avoid timezone shift
+    const d = new Date(dateString);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   };
 
   // Get today's date as YYYY-MM-DD using local timezone (not UTC)
@@ -453,16 +462,21 @@ const PersonalExpense = () => {
                             <div className="flex-1 min-w-0">
                               <div className='flex justify-between items-center'>
                                 <p className="font-medium text-gray-900 leading-tight">{transaction.description}</p>
+                                {/* <div className="text-right">
+                                  <p className="font-bold text-gray-500">
+                                    {formatCurrency(transaction.amount)}
+                                  </p>
+                                </div> */}
+                              </div>
+                              <div className="flex items-center justify-between mt-2">
+                                {/* <span className={`text-xs px-2 py-0.5 rounded-full ${categoryInfo.color}`}>
+                                  {categoryInfo.label.split(' ')[1]}
+                                </span> */}
                                 <div className="text-right">
                                   <p className="font-bold text-gray-500">
                                     {formatCurrency(transaction.amount)}
                                   </p>
                                 </div>
-                              </div>
-                              <div className="flex items-center justify-end mt-2">
-                                {/* <span className={`text-xs px-2 py-0.5 rounded-full ${categoryInfo.color}`}>
-                                  {categoryInfo.label.split(' ')[1]}
-                                </span> */}
                                 <div className='flex items-center'>
                                   <button
                                     onClick={() => handleEditClick(transaction)}
@@ -502,92 +516,109 @@ const PersonalExpense = () => {
       {/* Calendar Modal */}
       {showCalendarModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 rounded-t-2xl">
+          <div
+            className="bg-white rounded-2xl w-full max-w-md flex flex-col"
+            style={{ height: '520px' }}
+            onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              if (swipeStartX.current === null) return;
+              const dx = e.changedTouches[0].clientX - swipeStartX.current;
+              swipeStartX.current = null;
+              if (Math.abs(dx) > 50) changeMonth(dx < 0 ? 1 : -1);
+            }}
+          >
+            {/* Header — fixed */}
+            <div className="bg-white border-b border-gray-200 p-4 rounded-t-2xl flex-shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Expense Calendar</h2>
-                <button
-                  onClick={() => setShowCalendarModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowCalendarModal(false)} className="text-gray-400 hover:text-gray-600">
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
               {/* Month Navigation */}
               <div className="flex items-center justify-between">
-                <button
-                  onClick={() => changeMonth(-1)}
-                  className="p-2 bg-gray-100 rounded-lg transition-colors"
-                >
+                <button onClick={() => changeMonth(-1)} className="p-2 bg-gray-100 rounded-lg transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="font-semibold text-lg">
+                <span className="font-semibold text-lg select-none">
                   {currentMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
                 </span>
-                <button
-                  onClick={() => changeMonth(1)}
-                  className="p-2 bg-gray-100 rounded-lg transition-colors"
-                >
+                <button onClick={() => changeMonth(1)} className="p-2 bg-gray-100 rounded-lg transition-colors">
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="p-4">
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
+            {/* Body — fixed, no scroll */}
+            <div className="p-4 flex flex-col flex-1">
+              {/* Day labels */}
+              <div className="grid grid-cols-7 gap-1 mb-1 flex-shrink-0">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center text-xs font-semibold text-gray-600 py-2">
+                  <div key={day} className="text-center text-xs font-semibold text-gray-500 py-1">
                     {day}
                   </div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-7 gap-1">
-                {getDaysInMonth().map((date, index) => {
-                  if (!date) {
-                    return <div key={`empty-${index}`} className="aspect-square" />;
-                  }
+              {/* Calendar grid — always 6 rows × 7 cols = fixed height */}
+              <div className="grid grid-cols-7 gap-1 flex-1">
+                {(() => {
+                  const days = getDaysInMonth();
+                  // Pad to always 42 cells (6 rows)
+                  while (days.length < 42) days.push(null);
+                  return days.slice(0, 42).map((date, index) => {
+                    if (!date) {
+                      return <div key={`empty-${index}`} className="rounded-lg" />;
+                    }
+                    const dateString = date.toDateString();
+                    const dayData = calendarData[dateString];
+                    const isToday = dateString === new Date().toDateString();
+                    const hasTransactions = !!dayData;
 
-                  const dateString = date.toDateString();
-                  const dayData = calendarData[dateString];
-                  const isToday = date.toDateString() === new Date().toDateString();
-                  const hasTransactions = !!dayData;
+                    const formatAmt = (n) => {
+                      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M+`;
+                      if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k+`;
+                      return `${n.toFixed(0)}`;
+                    };
 
-                  return (
-                    <button
-                      key={date.toISOString()}
-                      onClick={() => handleDateClick(date)}
-                      className={`aspect-square p-1 rounded-lg border-2 transition-all ${isToday
-                          ? 'border-blue-500 bg-blue-50'
-                          : hasTransactions
-                            ? 'border-green-300 bg-green-50 hover:bg-green-100'
-                            : 'border-gray-200 hover:bg-gray-50'
+                    return (
+                      <button
+                        key={date.toISOString()}
+                        onClick={() => handleDateClick(date)}
+                        className={`rounded-lg border-2 transition-all flex flex-col items-center justify-center p-0.5 ${
+                          isToday
+                            ? 'border-blue-500 bg-blue-50'
+                            : hasTransactions
+                              ? 'border-green-300 bg-green-50 hover:bg-green-100'
+                              : 'border-gray-100 hover:bg-gray-50'
                         } ${hasTransactions ? 'cursor-pointer' : 'cursor-default'}`}
-                    >
-                      <div className="text-sm font-medium text-gray-900">
-                        {date.getDate()}
-                      </div>
-                      {hasTransactions && (
-                        <div className="text-xs font-bold text-red-600 truncate">
-                          ₹{dayData.total.toFixed(0)}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                      >
+                        <span className="text-xs font-semibold text-gray-900 leading-tight">
+                          {date.getDate()}
+                        </span>
+                        {hasTransactions && (
+                          <span className="text-[9px] font-bold text-red-500 leading-tight">
+                            ₹{formatAmt(dayData.total)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
 
               {/* Legend */}
-              <div className="mt-4 flex items-center justify-center space-x-4 text-xs text-gray-600">
+              <div className="mt-3 flex items-center justify-center space-x-4 text-xs text-gray-500 flex-shrink-0">
                 <div className="flex items-center space-x-1">
-                  <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-50"></div>
+                  <div className="w-3 h-3 rounded border-2 border-blue-500 bg-blue-50" />
                   <span>Today</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <div className="w-4 h-4 rounded border-2 border-green-300 bg-green-50"></div>
+                  <div className="w-3 h-3 rounded border-2 border-green-300 bg-green-50" />
                   <span>Has expenses</span>
+                </div>
+                <div className="flex items-center space-x-1 text-gray-400">
+                  <span>← swipe →</span>
                 </div>
               </div>
             </div>
@@ -759,9 +790,20 @@ const PersonalExpense = () => {
 
               <button
                 onClick={handleAddTransaction}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
+                disabled={submitting}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
-                Add Expense
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <span>Add Expense</span>
+                )}
               </button>
             </div>
           </div>
@@ -850,9 +892,20 @@ const PersonalExpense = () => {
 
               <button
                 onClick={handleUpdateTransaction}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
+                disabled={submitting}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
-                Update Expense
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  <span>Update Expense</span>
+                )}
               </button>
             </div>
           </div>

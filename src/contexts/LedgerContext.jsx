@@ -5,6 +5,12 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
+// Returns today's date as YYYY-MM-DD in the user's local timezone
+const getLocalTodayString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const LedgerContext = createContext();
 
 export const useLedger = () => {
@@ -41,9 +47,11 @@ export const LedgerProvider = ({ children }) => {
       setError('');
 
       // Fetch both ledgers and personal expense summary
+      // Pass the client's local date so the server uses correct IST day boundaries
+      const localDate = getLocalTodayString();
       const [ledgersResponse, expenseResponse] = await Promise.all([
         axios.get(`${API_BASE_URL}/ledger`),
-        axios.get(`${API_BASE_URL}/personal-expense/summary`).catch(() => ({
+        axios.get(`${API_BASE_URL}/personal-expense/summary?localDate=${localDate}`).catch(() => ({
           data: { summary: { today: 0, lastWeek: 0, yesterday: 0 } }
         }))
       ]);

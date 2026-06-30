@@ -1,39 +1,39 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { Eye, EyeOff, User, Smartphone, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Mail, ShieldCheck, Lock } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 // Step 1: Enter email → send OTP
 // Step 2: Enter OTP → verify
-// Step 3: Fill name, mobile, password → register
+// Step 3: Enter new password → reset
 
-const Register = () => {
+const ForgotPassword = () => {
   const [step, setStep] = useState(1);
-
-  // Step 1
   const [email, setEmail] = useState('');
-
-  // Step 2
   const [otp, setOtp] = useState('');
-  const [otpSending, setOtpSending] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-
-  // Step 3
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const { register } = useAuth();
   const navigate = useNavigate();
+
+  const startResendTimer = () => {
+    setResendTimer(60);
+    const interval = setInterval(() => {
+      setResendTimer(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   // ── Step 1: Send OTP ──────────────────────────────────────────────
   const handleSendOTP = async (e) => {
@@ -50,7 +50,7 @@ const Register = () => {
     try {
       await axios.post(`${API_BASE_URL}/auth/send-otp`, {
         email: email.trim(),
-        purpose: 'registration'
+        purpose: 'forgot-password'
       });
       setStep(2);
       startResendTimer();
@@ -61,16 +61,6 @@ const Register = () => {
     }
   };
 
-  const startResendTimer = () => {
-    setResendTimer(60);
-    const interval = setInterval(() => {
-      setResendTimer(prev => {
-        if (prev <= 1) { clearInterval(interval); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
   const handleResendOTP = async () => {
     if (resendTimer > 0) return;
     setError('');
@@ -78,7 +68,7 @@ const Register = () => {
     try {
       await axios.post(`${API_BASE_URL}/auth/send-otp`, {
         email: email.trim(),
-        purpose: 'registration'
+        purpose: 'forgot-password'
       });
       startResendTimer();
     } catch (err) {
@@ -103,7 +93,7 @@ const Register = () => {
       await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         email: email.trim(),
         otp,
-        purpose: 'registration'
+        purpose: 'forgot-password'
       });
       setStep(3);
     } catch (err) {
@@ -113,42 +103,31 @@ const Register = () => {
     }
   };
 
-  // ── Step 3: Complete Registration ─────────────────────────────────
-  const handleRegister = async (e) => {
+  // ── Step 3: Reset Password ────────────────────────────────────────
+  const handleResetPassword = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!name || !mobile || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
-    if (name.trim().length < 2) {
-      setError('Name must be at least 2 characters long');
-      return;
-    }
-    if (mobile.length !== 10 || !/^[6-9]\d{9}$/.test(mobile)) {
-      setError('Please enter a valid 10-digit mobile number');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
-    if (password !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await register(name.trim(), mobile, password, email.trim(), otp);
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setError(result.message);
-      }
+      await axios.post(`${API_BASE_URL}/auth/forgot-password`, {
+        email: email.trim(),
+        otp,
+        newPassword
+      });
+      setSuccess('Password reset successfully!');
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError(err.response?.data?.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
@@ -159,7 +138,6 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">ShareKhata</h1>
           <p className="text-gray-600">Split expenses with friends easily</p>
@@ -181,19 +159,24 @@ const Register = () => {
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
-            {step === 1 && 'Create Account'}
+            {step === 1 && 'Forgot Password'}
             {step === 2 && 'Verify Email'}
-            {step === 3 && 'Your Details'}
+            {step === 3 && 'New Password'}
           </h2>
           <p className="text-sm text-gray-500 text-center mb-6">
-            {step === 1 && 'Enter your email to get started'}
+            {step === 1 && 'Enter your registered email address'}
             {step === 2 && `OTP sent to ${email}`}
-            {step === 3 && 'Almost done! Fill in your details'}
+            {step === 3 && 'Choose a strong new password'}
           </p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
+              {success}
             </div>
           )}
 
@@ -211,7 +194,7 @@ const Register = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className={inputClass}
-                    placeholder="Enter your email"
+                    placeholder="Enter your registered email"
                     required
                     autoFocus
                   />
@@ -283,61 +266,23 @@ const Register = () => {
             </form>
           )}
 
-          {/* ── Step 3: Name, Mobile, Password ── */}
+          {/* ── Step 3: New Password ── */}
           {step === 3 && (
-            <form onSubmit={handleRegister} className="space-y-4">
-              {/* Full Name */}
+            <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className={inputClass}
-                    placeholder="Enter your full name"
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              {/* Mobile */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Smartphone className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="tel"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    className={inputClass}
-                    placeholder="10-digit mobile number"
-                    maxLength="10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    placeholder="Create a password"
+                    placeholder="Enter new password"
                     required
+                    autoFocus
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
@@ -345,7 +290,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
                 <div className="relative">
@@ -357,7 +301,7 @@ const Register = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    placeholder="Confirm your password"
+                    placeholder="Confirm new password"
                     required
                   />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -369,35 +313,22 @@ const Register = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading ? 'Resetting...' : 'Reset Password'}
               </button>
             </form>
           )}
 
-          {/* Divider + Login link */}
-          <div className="my-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Already have an account?</span>
-              </div>
-            </div>
+          <div className="mt-6 text-center">
+            <Link to="/login" className="text-sm text-blue-600 hover:underline font-medium">
+              ← Back to Sign In
+            </Link>
           </div>
-          <Link to="/login" className="block w-full text-center bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors">
-            Sign In
-          </Link>
         </div>
-
-        <p className="text-center text-gray-500 text-sm mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy
-        </p>
       </div>
     </div>
   );
 };
 
-export default Register;
+export default ForgotPassword;

@@ -6,7 +6,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const INVITE_TEXT = (mobile) =>
-  `Hey! I'm using ShareKhata to track shared expenses. Join me so we can manage money together easily! 🤝\n\nRegister here: https://sharekhata.in/register\n\nMy number: ${mobile || ''}`;
+  `Hey! I'm using ShareKhata to track shared expenses. Join me so we can manage money together easily! 🤝\n\nRegister here: https://sharekhata.in/register`;
 
 const AddFriend = () => {
   const [mobile, setMobile] = useState('');
